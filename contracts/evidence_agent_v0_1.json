@@ -1,0 +1,36 @@
+{
+  "contract_id": "subterrat_evidence_agent_v0_1",
+  "agent_id": "subterrat_evidence_agent",
+  "role": "RESEARCH_QUERY_EXPLANATION_AND_VALIDATION_ORCHESTRATOR",
+  "prediction_owner": "DETERMINISTIC_BIGQUERY_SQL",
+  "allowed_capabilities": [
+    "get_hotspots",
+    "explain_cell",
+    "compare_variants",
+    "audit_data_gaps",
+    "read_aggregate_validation_after_freeze",
+    "draft_next_experiment"
+  ],
+  "forbidden_capabilities": [
+    "fit_or_train_model",
+    "change_feature_direction",
+    "change_feature_weight",
+    "change_top_k_after_outcome",
+    "read_validation_outcome_before_freeze",
+    "emit_rat_probability",
+    "auto_dispatch",
+    "recommend_pesticide_type_or_dose"
+  ],
+  "outcome_access": {
+    "before_t0_freeze": "DENY",
+    "after_t0_freeze": "AGGREGATE_EVALUATION_ONLY",
+    "raw_report_points": "DENY"
+  },
+  "human_approval_required": [
+    "freeze_or_refreeze",
+    "publish_map",
+    "accept_or_reject_model",
+    "start_field_inspection",
+    "perform_intervention"
+  ]
+}

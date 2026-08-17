@@ -1,0 +1,79 @@
+{
+  "contract_id": "subterrat_structural_score_v0_1",
+  "target": "future_taipei_approved_rat_report_hotspot_ranking",
+  "model_kind": "DETERMINISTIC_HOTSPOT_RANKING",
+  "training_mode": "NO_SUPERVISED_TRAINING",
+  "fitted_training_job_allowed": false,
+  "llm_weight_or_score_adjustment_allowed": false,
+  "experiment_mode": "ONLINE_FEATURE_ONLY_LAYERWISE_BENCHMARK",
+  "analysis_unit": {
+    "grid_system": "S2",
+    "level": 15,
+    "boundary_source": "https://data.gov.tw/dataset/7442",
+    "boundary_snapshot": "COUNTY_MOI_1140318"
+  },
+  "feature_groups": [
+    {
+      "group": "food_market",
+      "weight": 0.3333333333333333,
+      "direction": "higher",
+      "required_for_full_three_group_score": true,
+      "layerwise_variant": "food_market_only"
+    },
+    {
+      "group": "sewer_environment",
+      "weight": 0.3333333333333333,
+      "direction": "paper_registered_per_feature",
+      "required_for_full_three_group_score": true,
+      "layerwise_variant": "sewer_system_type_only"
+    },
+    {
+      "group": "abandoned_building",
+      "weight": 0.3333333333333333,
+      "direction": "higher",
+      "required_for_full_three_group_score": true,
+      "layerwise_variant": "abandoned_building_only"
+    }
+  ],
+  "layerwise_policy": {
+    "wait_for_all_feature_groups": false,
+    "create_variant_when_layer_has_scored_cells": true,
+    "missing_layer_action": "PUBLISH_BLOCKED_STATUS_NOT_IMPUTED_SCORE",
+    "comparison_reference": "food_market_only"
+  },
+  "variants": [
+    {
+      "variant_id": "food_market_only",
+      "source_field": "food_market_sites_per_km2",
+      "current_state": "PROVISIONAL_AVAILABLE"
+    },
+    {
+      "variant_id": "sewer_system_type_only",
+      "source_field": "sanitary_system_record_share",
+      "current_state": "PROVISIONAL_AVAILABLE"
+    },
+    {
+      "variant_id": "abandoned_building_only",
+      "source_field": "unused_public_building_address_point_overlay",
+      "current_state": "PROVISIONAL_OVERLAY_NOT_CITYWIDE_FEATURE"
+    }
+  ],
+  "baseline": "random_area_expectation_with_food_market_reference",
+  "primary_selection": "top_10_percent_eligible_area",
+  "selection_tie_policy": "INCLUDE_ALL_THRESHOLD_TIES_AND_REPORT_ACTUAL_AREA_SHARE",
+  "outcome_policy": {
+    "rat_radar_role": "VALIDATION_ONLY_AFTER_T0_FREEZE",
+    "forbidden_uses": [
+      "feature",
+      "label",
+      "weight_tuning",
+      "model_selection",
+      "training",
+      "calibration"
+    ]
+  },
+  "public_output": {
+    "allowed_terms": ["structural_score", "rank", "top_area_flag"],
+    "forbidden_terms": ["rat_probability", "rat_presence_probability", "disease_risk_probability"]
+  }
+}
