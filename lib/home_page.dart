@@ -34,7 +34,16 @@ class _HomePageState extends State<HomePage> {
   GoogleMapController? _map;
 
   /// 資料資訊面板是否展開。
-  bool _infoOpen = false;
+  bool _infoOpen = true;
+
+  /// 通報事項抽屜是否展開。
+  bool _noticeOpen = false;
+
+  /// 是否已通過登入閘門。
+  ///
+  /// 目前只是畫面流程，沒有串真的 Google OAuth。
+  /// 要接真登入的話換掉 [_askLogin] 的內容即可，其餘不用動。
+  bool _signedIn = false;
 
   /// 圓形不確定範圍的文字標籤，key 是格子 id。
   final Map<String, BitmapDescriptor> _labelIcons = {};
@@ -372,7 +381,44 @@ class _HomePageState extends State<HomePage> {
   // 民眾通報
   // -------------------------------------------------------------------
 
+  /// 登入閘門。
+  ///
+  /// 目前只是畫面流程，按下去直接視為登入成功，沒有串真的 Google OAuth。
+  /// 要接真登入時只要換掉這個函式的內容，呼叫端不用動。
+  Future<bool> _askLogin() async {
+    if (_signedIn) return true;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
+        title: const Text('登入後通報鼠蹤',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+        content: const Text('瀏覽地圖不用登入；只有送出通報時需要 Google 帳號。',
+            style: TextStyle(
+                fontSize: TypeScale.body,
+                height: 1.6,
+                color: Palette.bodyInk)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('先不要')),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: Palette.brand),
+            icon: const Icon(Icons.account_circle_outlined, size: 18),
+            label: const Text('使用 Google 繼續'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) setState(() => _signedIn = true);
+    return ok == true;
+  }
+
   Future<void> _openReportSheet() async {
+    if (!await _askLogin()) return;
+    if (!mounted) return;
     var kind = ReportKind.sighting;
     final noteCtl = TextEditingController();
     final at = _mapCenter;
@@ -478,36 +524,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void _showAlerts() {
-    final pending = _reports.where((r) => r.pending).length;
-    final misses = _observed.isEmpty ? 0 : _observed.length - _hits;
-    showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('待處理事項'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          ListTile(
-            dense: true,
-            leading: const Icon(Icons.schedule, color: Palette.danger),
-            title: Text('$pending 筆通報還沒送出'),
-            subtitle: const Text('網路恢復後會自動重試'),
-          ),
-          ListTile(
-            dense: true,
-            leading: const Icon(Icons.location_off, color: Palette.miss),
-            title: Text('$misses 筆通報落在圈選範圍外'),
-            subtitle: const Text('這些是模型沒有預測到的地方，值得檢視'),
-          ),
-        ]),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('關閉')),
-        ],
-      ),
-    );
-  }
-
   void _toast(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
@@ -554,7 +570,6 @@ class _HomePageState extends State<HomePage> {
       ),
       body: SafeArea(
         child: Column(children: [
-          _StatusBar(prov: _prov),
           Expanded(child: _buildMap()),
           _TimeBar(
             week: _week,
@@ -640,6 +655,8 @@ class _HomePageState extends State<HomePage> {
               child: _CellCard(
                 cell: _selected!,
                 heat: _heat(_selected!),
+                date: _weekDate,
+                rank: _cells.indexOf(_selected!) + 1,
                 onClose: () => setState(() => _selected = null),
               ),
             ),
@@ -654,16 +671,17 @@ class _HomePageState extends State<HomePage> {
         child: Row(children: [
           _IconBtn(
             icon: Icons.info_outline,
-            filled: true,
+            filled: _infoOpen,
             tooltip: '資料資訊',
             onTap: () => setState(() => _infoOpen = !_infoOpen),
           ),
           const SizedBox(width: 8),
           _IconBtn(
             icon: Icons.notifications_none,
+            filled: _noticeOpen,
             badge: _alertCount,
-            tooltip: '待處理事項',
-            onTap: () => _showAlerts(),
+            tooltip: '通報事項',
+            onTap: () => setState(() => _noticeOpen = !_noticeOpen),
           ),
         ]),
       ),
@@ -678,14 +696,28 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
 
+      // 縮放按鈕左邊：版本狀態條與資料來源
       if (_infoOpen)
         Positioned(
-          right: 12,
-          top: 66,
-          width: 320,
-          child: _DataInfoPanel(
-            prov: _prov,
-            onClose: () => setState(() => _infoOpen = false),
+          right: 62,
+          top: 64,
+          width: 430,
+          child: Column(children: [
+            _DataStatusStrip(prov: _prov),
+            const SizedBox(height: 6),
+            const _StructuralSources(),
+          ]),
+        ),
+
+      if (_noticeOpen)
+        Positioned(
+          right: 62,
+          top: 64,
+          width: 340,
+          child: _NoticeDrawer(
+            date: _weekDate,
+            top: _cells.isEmpty ? null : _cells.first,
+            onClose: () => setState(() => _noticeOpen = false),
           ),
         ),
 
@@ -718,147 +750,280 @@ class _HomePageState extends State<HomePage> {
 
 // ---------------------------------------------------------------------------
 
-/// 頂端狀態列：版本、封存代號、證據政策。
+/// 版本與證據狀態條。
 ///
-/// 這一條讓畫面上的任何數字都能被追溯到哪一版程式、哪一份封存。
-/// NO_TRUSTED_RESULT 必須明講而不是省略 —— 沒有驗證收據就是沒有，
+/// `NO_TRUSTED_RESULT` 必須明講而不是省略 —— 沒有驗證收據就是沒有，
 /// 留白會讓人誤以為已經驗證過。
-class _StatusBar extends StatelessWidget {
-  const _StatusBar({required this.prov});
+class _DataStatusStrip extends StatelessWidget {
+  const _DataStatusStrip({required this.prov});
 
   final Provenance prov;
 
-  static String _d(DateTime? t) => t == null
-      ? '—'
-      : '${t.year}/${t.month.toString().padLeft(2, '0')}/'
-          '${t.day.toString().padLeft(2, '0')}';
+  static const _panelShadow = [
+    BoxShadow(color: Color(0x243F2C1F), blurRadius: 24, offset: Offset(0, 8)),
+  ];
 
   @override
   Widget build(BuildContext context) {
     final untrusted = prov.policy == EvidencePolicy.noTrustedResult;
-    return Material(
-      color: const Color(0xFFF7EDE4),
-      child: InkWell(
-        onTap: () => _openDetail(context),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          child: Row(children: [
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Palette.statusBg,
+        border: Border.all(color: Palette.statusBorder),
+        borderRadius: BorderRadius.circular(7),
+        boxShadow: _panelShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-              color: untrusted ? Palette.danger : Palette.accent,
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: untrusted ? Palette.evidenceBadge : Palette.brand,
+                borderRadius: BorderRadius.circular(2),
+              ),
               child: Text(prov.policy.code,
                   style: const TextStyle(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.4,
+                      fontSize: TypeScale.micro,
+                      fontWeight: FontWeight.w700,
+                      height: 1.1,
                       color: Colors.white)),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'release ${prov.releaseId}　·　freeze '
-                '${prov.isFrozen ? prov.freezeId : "尚未封存"}',
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    fontFamily: kMonoFamily,
-                    fontSize: 11.5,
-                    color: Palette.inkSoft),
-              ),
-            ),
-            const Text('詳情',
-                style: TextStyle(
-                    fontSize: 11.5,
-                    color: Palette.danger,
-                    fontWeight: FontWeight.w600)),
-          ]),
-        ),
-      ),
-    );
-  }
-
-  void _openDetail(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('版本與證據狀態'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _row('release_id', prov.releaseId),
-              _row('freeze_id', prov.isFrozen ? prov.freezeId : 'NOT_FROZEN'),
-              _row('封存時間', _d(prov.frozenAt)),
-              _row('觀測窗', '${_d(prov.t1Start)} – ${_d(prov.t1End)}'),
-              const Divider(height: 20),
-              const Text('分數語意',
-                  style:
-                      TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 3),
-              Text(prov.scoreSemantics,
-                  style: const TextStyle(
-                      fontSize: 12.8, color: Palette.inkSoft, height: 1.5)),
-              const SizedBox(height: 6),
-              const Text('這個分數是排序用的，不是機率。不可以說「這裡有 N% 機率有鼠患」。',
-                  style: TextStyle(
-                      fontSize: 12,
-                      color: Palette.danger,
-                      height: 1.5,
-                      fontWeight: FontWeight.w600)),
-              const Divider(height: 20),
-              Text('證據政策：${prov.policy.code}',
-                  style:
-                      const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 3),
-              Text(prov.policy.detail,
-                  style: const TextStyle(
-                      fontSize: 12.8, color: Palette.inkSoft, height: 1.5)),
-              if (prov.sources.isNotEmpty) ...[
-                const Divider(height: 20),
-                const Text('資料來源版本',
+            const SizedBox(width: 9),
+            Flexible(
+              child: Row(children: [
+                const Text('release ',
                     style: TextStyle(
-                        fontSize: 12.5, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 3),
-                ...prov.sources.entries.map((e) => _row(e.key, e.value)),
-              ],
-              const Divider(height: 20),
-              const Text(
-                '地圖上的熱點是機制模型的模擬情境，參數來自公開文獻，沒有用臺北市資料校準過。'
-                '它不能推估任何一格實際有幾隻老鼠，也不能用來決定餌劑種類、劑量或投放地點。\n\n'
-                '民眾通報是本 app 自己收到的資料，與見鼠雷達分開存放，不回灌進模型。',
-                style: TextStyle(
-                    fontSize: 12.5, color: Palette.inkSoft, height: 1.55),
+                        fontSize: TypeScale.micro, color: Palette.metaLabel)),
+                Flexible(
+                  child: Text(prov.releaseId,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontFamily: kMonoFamily,
+                          fontSize: TypeScale.micro,
+                          fontWeight: FontWeight.w700,
+                          color: Palette.metaValue)),
+                ),
+                const Text('　·　',
+                    style: TextStyle(
+                        fontSize: TypeScale.micro, color: Palette.metaSep)),
+                const Text('freeze ',
+                    style: TextStyle(
+                        fontSize: TypeScale.micro, color: Palette.metaLabel)),
+                Flexible(
+                  child: Text(prov.isFrozen ? prov.freezeId : 'NOT_FROZEN',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontFamily: kMonoFamily,
+                          fontSize: TypeScale.micro,
+                          fontWeight: FontWeight.w700,
+                          color: Palette.metaValue)),
+                ),
+              ]),
+            ),
+          ]),
+          const SizedBox(height: 5),
+          Row(children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              decoration: BoxDecoration(
+                color: Palette.semanticsPill,
+                borderRadius: BorderRadius.circular(3),
               ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('知道了')),
+              child: const Text('structural_score',
+                  style: TextStyle(
+                      fontFamily: kMonoFamily,
+                      fontSize: TypeScale.micro,
+                      color: Palette.semanticsInk)),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(prov.scoreSemantics,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontSize: TypeScale.micro, color: Palette.helperInk)),
+            ),
+          ]),
         ],
       ),
     );
   }
+}
 
-  Widget _row(String k, String v) => Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SizedBox(
-            width: 92,
-            child: Text(k,
-                style:
-                    const TextStyle(fontSize: 12, color: Palette.inkFaint)),
+/// 三組結構性資料來源。對應 docs/BELIEF.md 鎖定的三組輸入。
+class _StructuralSources extends StatelessWidget {
+  const _StructuralSources();
+
+  static const _groups = ['餐飲／市場', '地下環境', '廢棄建築'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Palette.statusBg,
+        border: Border.all(color: Palette.statusBorder),
+        borderRadius: BorderRadius.circular(7),
+        boxShadow: _DataStatusStrip._panelShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('結構性資料來源',
+              style: TextStyle(
+                  fontSize: TypeScale.caption,
+                  fontWeight: FontWeight.w500,
+                  color: Palette.metaValue)),
+          const SizedBox(height: 7),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: _groups
+                .map((g) => Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Palette.sourcePill,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(g,
+                          style: const TextStyle(
+                              fontSize: TypeScale.micro,
+                              fontWeight: FontWeight.w500,
+                              color: Palette.sourceInk)),
+                    ))
+                .toList(),
           ),
-          Expanded(
-            child: Text(v,
-                style: const TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    fontFeatures: [FontFeature.tabularFigures()])),
+          const SizedBox(height: 7),
+          const Text('只使用這三組輸入，不以見鼠通報調整權重。',
+              style: TextStyle(
+                  fontSize: TypeScale.micro, color: Palette.helperInk)),
+        ],
+      ),
+    );
+  }
+}
+
+/// 通報事項抽屜。
+///
+/// 內容刻意停在「環境檢視參考」，不出現投藥、劑量或派工字樣 ——
+/// 那些是 docs/BELIEF.md 明列的非目標。
+class _NoticeDrawer extends StatelessWidget {
+  const _NoticeDrawer({required this.onClose, required this.date, this.top});
+
+  final VoidCallback onClose;
+  final DateTime date;
+  final RiskCell? top;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Palette.surface,
+        border: Border.all(color: Palette.hair),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: Palette.panelShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            const Text('通報事項',
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Palette.headline)),
+            InkWell(
+              onTap: onClose,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Palette.closeBg,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text('關閉',
+                    style: TextStyle(
+                        fontSize: TypeScale.micro,
+                        fontWeight: FontWeight.w500,
+                        color: Palette.metaLabel)),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 10),
+          const Text('以下是模型圈選出、建議優先安排環境檢視的區域。這不是派工指示。',
+              style: TextStyle(
+                  fontSize: TypeScale.caption,
+                  height: 1.64,
+                  color: Palette.bodyInk)),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Palette.noticeCard,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('結構性排序最高',
+                    style: TextStyle(
+                        fontSize: TypeScale.micro,
+                        fontWeight: FontWeight.w500,
+                        color: Palette.noticeType)),
+                const SizedBox(height: 4),
+                Text(top?.district ?? '尚無資料',
+                    style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Palette.headline)),
+                const SizedBox(height: 3),
+                Text('${date.month} 月 ${date.day} 日・前 10% 圈選範圍',
+                    style: const TextStyle(
+                        fontSize: TypeScale.micro,
+                        color: Palette.helperInk)),
+                const SizedBox(height: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Palette.inspectionPill,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: const Text('供環境檢視參考',
+                      style: TextStyle(
+                          fontSize: TypeScale.micro,
+                          fontWeight: FontWeight.w700,
+                          color: Palette.inspectionInk)),
+                ),
+              ],
+            ),
           ),
-        ]),
-      );
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
+            decoration: BoxDecoration(
+              color: Palette.demoDisclaimerBg,
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: const Text('展示用內容，不構成投藥或派工指示。',
+                style: TextStyle(
+                    fontSize: TypeScale.micro,
+                    height: 1.5,
+                    color: Palette.demoDisclaimerInk)),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// 品牌標記。
@@ -1022,101 +1187,6 @@ class _LegendPill extends StatelessWidget {
               fontSize: TypeScale.micro, color: Colors.white)),
     );
   }
-}
-
-/// 資料資訊面板。對齊 Figma 的 Data Info Panel。
-class _DataInfoPanel extends StatelessWidget {
-  const _DataInfoPanel({required this.prov, required this.onClose});
-
-  final Provenance prov;
-  final VoidCallback onClose;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Palette.surface,
-        border: Border.all(color: Palette.hair),
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: Palette.panelShadow,
-      ),
-      child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(children: [
-              const Text('資料資訊',
-                  style: TextStyle(
-                      fontSize: TypeScale.label, fontWeight: FontWeight.w700)),
-              const Spacer(),
-              InkWell(
-                onTap: onClose,
-                child: Container(
-                  width: 26,
-                  height: 26,
-                  decoration: BoxDecoration(
-                    color: Palette.surfaceAlt,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.close,
-                      size: 16, color: Palette.inkSoft),
-                ),
-              ),
-            ]),
-            const SizedBox(height: 10),
-            _field('release_id', prov.releaseId),
-            _field('freeze_id', prov.isFrozen ? prov.freezeId : 'NOT_FROZEN'),
-            _field('score_semantics', prov.scoreSemantics),
-            _field('evidence_state', prov.policy.code),
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: Palette.warnBg,
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: const Text(
-                  '目前是結構性風險排序，尚無可信驗證結果。分數用於排序，不是機率。',
-                  style: TextStyle(
-                      fontSize: TypeScale.caption,
-                      height: 1.5,
-                      fontWeight: FontWeight.w500,
-                      color: Palette.warnInk)),
-            ),
-          ]),
-    );
-  }
-
-  Widget _field(String k, String v) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SizedBox(
-            width: 96,
-            child: Text(k,
-                style: const TextStyle(
-                    fontSize: TypeScale.micro, color: Palette.inkSoft)),
-          ),
-          Expanded(
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              decoration: BoxDecoration(
-                color: Palette.surfaceAlt,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(v,
-                  style: const TextStyle(
-                      fontFamily: kMonoFamily,
-                      fontSize: TypeScale.micro,
-                      height: 1.45,
-                      color: Color(0xFF33423C))),
-            ),
-          ),
-        ]),
-      );
 }
 
 class _WeekBadge extends StatelessWidget {
@@ -1308,47 +1378,162 @@ class _Chip extends StatelessWidget {
       );
 }
 
+/// 預測中心與不確定範圍的詳情卡。
+///
+/// 建議內容刻意停在一般環境衛生層級，不出現藥劑、劑量或派工 ——
+/// 那些是 docs/BELIEF.md 明列的非目標。
 class _CellCard extends StatelessWidget {
-  const _CellCard(
-      {required this.cell, required this.heat, required this.onClose});
+  const _CellCard({
+    required this.cell,
+    required this.heat,
+    required this.date,
+    required this.rank,
+    required this.onClose,
+  });
 
   final RiskCell cell;
   final double heat;
+  final DateTime date;
+
+  /// 在圈選清單裡的名次，從 1 開始。
+  final int rank;
+
   final VoidCallback onClose;
+
+  static const _advice = [
+    '廚餘與食物加蓋密封',
+    '清除巷弄堆積物與可能藏匿空間',
+    '發現孔洞或設施破損時，通報權責單位確認',
+  ];
+
+  String get _band => rank <= 3 ? '高風險' : '較高風險';
 
   @override
   Widget build(BuildContext context) {
-    return _Chip(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Expanded(
-            child: Text('${cell.district}　${cell.cellId}',
-                style:
-                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Palette.surface,
+        border: Border.all(color: Palette.hair),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: Palette.panelShadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            const Flexible(
+              child: Text('預測中心與不確定範圍',
+                  style: TextStyle(
+                      fontSize: TypeScale.label,
+                      fontWeight: FontWeight.w700,
+                      color: Palette.headline)),
+            ),
+            InkWell(
+              onTap: onClose,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Palette.closeBg,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text('關閉',
+                    style: TextStyle(
+                        fontSize: TypeScale.micro,
+                        fontWeight: FontWeight.w500,
+                        color: Palette.metaLabel)),
+              ),
+            ),
+          ]),
+          const Divider(height: 14),
+          Text(_band,
+              style: const TextStyle(
+                  fontSize: TypeScale.micro,
+                  fontWeight: FontWeight.w500,
+                  color: Palette.noticeType)),
+          const SizedBox(height: 2),
+          Text(cell.district,
+              style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: Palette.headline)),
+          const SizedBox(height: 2),
+          Text('${date.month} 月 ${date.day} 日・排序第 $rank 名',
+              style: const TextStyle(
+                  fontSize: TypeScale.micro, color: Palette.helperInk)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: cell.topFactors
+                .take(2)
+                .map((f) => Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Palette.sourcePill,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(f,
+                          style: const TextStyle(
+                              fontSize: TypeScale.micro,
+                              fontWeight: FontWeight.w500,
+                              color: Palette.sourceInk)),
+                    ))
+                .toList(),
           ),
-          InkWell(
-            onTap: onClose,
-            child: const Icon(Icons.close, size: 16, color: Palette.inkFaint),
+          const SizedBox(height: 8),
+          _kv('此刻熱點強度', heat.toStringAsFixed(2)),
+          _kv('結構性篩選分數', cell.structuralScore.toStringAsFixed(2)),
+          const SizedBox(height: 6),
+          const Text('圓心為預測位置，圓形為空間不確定範圍；不是鼠患機率。',
+              style: TextStyle(
+                  fontSize: TypeScale.micro,
+                  height: 1.5,
+                  color: Palette.helperInk)),
+          const Divider(height: 16),
+          const Text('一般防鼠建議',
+              style: TextStyle(
+                  fontSize: TypeScale.caption,
+                  fontWeight: FontWeight.w700,
+                  color: Palette.headline)),
+          const SizedBox(height: 5),
+          ..._advice.map((a) => Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('・',
+                          style: TextStyle(
+                              fontSize: TypeScale.micro,
+                              color: Palette.bodyInk)),
+                      Expanded(
+                        child: Text(a,
+                            style: const TextStyle(
+                                fontSize: TypeScale.micro,
+                                height: 1.5,
+                                color: Palette.bodyInk)),
+                      ),
+                    ]),
+              )),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: Palette.demoDisclaimerBg,
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: const Text('環境衛生資訊，不構成投藥或派工指示。',
+                style: TextStyle(
+                    fontSize: TypeScale.micro,
+                    height: 1.5,
+                    color: Palette.demoDisclaimerInk)),
           ),
-        ]),
-        const Divider(height: 13),
-        _kv('此刻熱點強度', heat.toStringAsFixed(2)),
-        _kv('結構性篩選分數', cell.structuralScore.toStringAsFixed(2)),
-        _kv('食物豐度', cell.carryingCapacity.round().toString()),
-        const Padding(
-          padding: EdgeInsets.only(top: 2, bottom: 2),
-          child: Text('分數為排序用，非機率',
-              style: TextStyle(fontSize: 10.5, color: Palette.danger)),
-        ),
-        if (cell.topFactors.isNotEmpty) ...[
-          const SizedBox(height: 7),
-          const Text('主要成因',
-              style: TextStyle(fontSize: 11, color: Palette.inkFaint)),
-          const SizedBox(height: 3),
-          ...cell.topFactors.map((f) => Text('· $f',
-              style: const TextStyle(fontSize: 12, color: Palette.inkSoft))),
         ],
-      ]),
+      ),
     );
   }
 
@@ -1357,12 +1542,14 @@ class _CellCard extends StatelessWidget {
         child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
           Flexible(
             child: Text(k,
-                style: const TextStyle(fontSize: 12, color: Palette.inkSoft)),
+                style: const TextStyle(
+                    fontSize: TypeScale.micro, color: Palette.inkSoft)),
           ),
           const SizedBox(width: 8),
           Text(v,
               style: const TextStyle(
-                  fontSize: 12.5,
+                  fontFamily: kMonoFamily,
+                  fontSize: TypeScale.caption,
                   fontWeight: FontWeight.w700,
                   color: Palette.ink)),
         ]),
