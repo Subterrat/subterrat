@@ -342,20 +342,6 @@ class _HomePageState extends State<HomePage> {
     return out;
   }
 
-  List<ScheduleRow> _schedule() {
-    final rows = _cells
-        .map((c) => ScheduleRow(
-              cell: c,
-              steadyRatio: RatSim.steadyRatio(
-                  carryingCapacity: c.carryingCapacity, p: _params),
-              reboundWeeks: RatSim.weeksToRebound(
-                  carryingCapacity: c.carryingCapacity, p: _params),
-            ))
-        .toList();
-    rows.sort((a, b) => b.urgency.compareTo(a.urgency));
-    return rows.take(25).toList();
-  }
-
   static String _fmtTime(DateTime t) =>
       '${t.month}/${t.day} ${t.hour.toString().padLeft(2, '0')}:'
       '${t.minute.toString().padLeft(2, '0')}';
@@ -398,34 +384,22 @@ class _HomePageState extends State<HomePage> {
           ),
           SizedBox(
             height: 268,
-            child: DefaultTabController(
-              length: 2,
-              child: Column(children: [
-                ColoredBox(
-                  color: Palette.surface,
-                  child: TabBar(
-                    labelColor: Palette.accent,
-                    unselectedLabelColor: Palette.inkFaint,
-                    indicatorColor: Palette.accent,
-                    labelStyle: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w700),
-                    tabs: [
-                      const Tab(text: '投藥情境'),
-                      const Tab(text: '回訪時機'),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: TabBarView(children: [
-                    _ScenarioTab(params: _params, onChanged: _setParams),
-                    _ScheduleTab(
-                      rows: _schedule(),
-                      onTap: (c) => setState(() => _selected = c),
-                    ),
-                  ]),
-                ),
-              ]),
-            ),
+            child: Column(children: [
+              Container(
+                width: double.infinity,
+                color: Palette.surface,
+                padding: const EdgeInsets.symmetric(vertical: 11),
+                child: const Text('投藥情境',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Palette.accent)),
+              ),
+              Expanded(
+                child: _ScenarioTab(params: _params, onChanged: _setParams),
+              ),
+            ]),
           ),
         ]),
       ),
@@ -1348,17 +1322,6 @@ class _ScenarioTab extends StatelessWidget {
           24,
           (v) => onChanged(params.copyWith(periodWeeks: v.round())),
         ),
-        _slider(
-          '周邊移入',
-          '${(params.migration * 100).round()}%',
-          '把這一格清乾淨之後，旁邊沒處理的地方會有老鼠搬過來填補。'
-              '拉高看看：只處理一個點會變得幾乎沒有用。',
-          params.migration,
-          0,
-          0.4,
-          40,
-          (v) => onChanged(params.copyWith(migration: v)),
-        ),
       ],
     );
   }
@@ -1395,89 +1358,3 @@ class _ScenarioTab extends StatelessWidget {
   }
 }
 
-class _ScheduleTab extends StatelessWidget {
-  const _ScheduleTab({required this.rows, required this.onTap});
-
-  final List<ScheduleRow> rows;
-  final ValueChanged<RiskCell> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    if (rows.isEmpty) return const Center(child: Text('沒有資料'));
-    return Column(children: [
-      Container(
-        color: Palette.surfaceAlt,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        child: const Row(children: [
-          Expanded(flex: 4, child: _H('位置')),
-          Expanded(flex: 3, child: _H('壓不下去的程度')),
-          Expanded(flex: 3, child: _H('多久長回來')),
-        ]),
-      ),
-      Expanded(
-        child: ListView.separated(
-          itemCount: rows.length,
-          separatorBuilder: (_, _) => const Divider(height: 1),
-          itemBuilder: (ctx, i) {
-            final r = rows[i];
-            return InkWell(
-              onTap: () => onTap(r.cell),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                child: Row(children: [
-                  Expanded(
-                    flex: 4,
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(r.cell.district,
-                              style: const TextStyle(
-                                  fontSize: 13, fontWeight: FontWeight.w600)),
-                          Text(r.cell.cellId,
-                              style: const TextStyle(
-                                  fontSize: 11, color: Palette.inkFaint)),
-                        ]),
-                  ),
-                  Expanded(
-                    flex: 3,
-                    child: Row(children: [
-                      Container(
-                          width: 9,
-                          height: 9,
-                          color: Palette.riskColor(r.steadyRatio)),
-                      const SizedBox(width: 6),
-                      Text('${(r.steadyRatio * 100).round()}%',
-                          style: const TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w700)),
-                    ]),
-                  ),
-                  Expanded(
-                    flex: 3,
-                    child: Text(
-                        r.reboundWeeks == null ? '沒長回來' : '${r.reboundWeeks} 週',
-                        style: const TextStyle(
-                            fontSize: 13, color: Palette.inkSoft)),
-                  ),
-                ]),
-              ),
-            );
-          },
-        ),
-      ),
-    ]);
-  }
-}
-
-class _H extends StatelessWidget {
-  const _H(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Text(text,
-      style: const TextStyle(
-          fontSize: 10.5,
-          letterSpacing: 0.6,
-          fontWeight: FontWeight.w700,
-          color: Palette.inkFaint));
-}

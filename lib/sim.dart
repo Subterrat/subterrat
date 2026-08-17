@@ -111,41 +111,4 @@ class RatSim {
     }
     return SimResult(population, ratio, baitWeeks);
   }
-
-  /// 最後 26 週的平均剩餘比例，用來排時程。
-  static double steadyRatio({
-    required double carryingCapacity,
-    required SimParams p,
-  }) {
-    final r = run(carryingCapacity: carryingCapacity, p: p).ratio;
-    var sum = 0.0;
-    for (var i = weeks - 26; i < weeks; i++) {
-      sum += r[i];
-    }
-    return sum / 26;
-  }
-
-  /// 投餌後，族群回升到門檻值所需的週數。
-  ///
-  /// 這是排回訪時機的依據：回升越快的地方越早需要再處理。
-  /// 回傳 null 表示在模擬期間內都沒有回升到門檻。
-  static int? weeksToRebound({
-    required double carryingCapacity,
-    required SimParams p,
-    double threshold = 0.6,
-  }) {
-    final res = run(carryingCapacity: carryingCapacity, p: p);
-    if (res.baitWeeks.isEmpty) return null;
-    final first = res.baitWeeks.first;
-
-    // 先等族群被壓下去，再看它多久爬回門檻。
-    var trough = first;
-    for (var t = first; t < weeks && t < first + 12; t++) {
-      if (res.ratio[t] < res.ratio[trough]) trough = t;
-    }
-    for (var t = trough; t < weeks; t++) {
-      if (res.ratio[t] >= threshold) return t - first;
-    }
-    return null;
-  }
 }

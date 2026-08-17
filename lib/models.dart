@@ -290,27 +290,3 @@ class ObservedReport {
       );
 }
 
-/// 模擬情境下的一列回訪時機。
-///
-/// 這不是給市府的正式建議，是模擬結果的呈現。
-class ScheduleRow {
-  final RiskCell cell;
-
-  /// 這個情境下的穩態剩餘族群比例，0–1。越高代表越壓不下去。
-  final double steadyRatio;
-
-  /// 投餌後回升到門檻所需週數。null 表示模擬期內沒回升。
-  final int? reboundWeeks;
-
-  const ScheduleRow({
-    required this.cell,
-    required this.steadyRatio,
-    required this.reboundWeeks,
-  });
-
-  /// 排序用：回升越快、壓制效果越差的排前面。
-  double get urgency {
-    final r = reboundWeeks?.toDouble() ?? 999;
-    return steadyRatio * 100 - r;
-  }
-}
