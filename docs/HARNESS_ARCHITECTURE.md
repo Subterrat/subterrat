@@ -279,21 +279,19 @@ stateDiagram-v2
 
 ### 7.1 候選模型階段
 
-1. **T0 feature-only baseline**：只使用餐飲／市場密度、Seattle 研究支持的地下水道環境假設與廢棄建築，建立可解釋 score；不以 T1 見鼠通報調權。
+1. **T0 deterministic prior score**：只使用餐飲／市場密度、Seattle 研究支持且通過 data gate 的地下水道環境特徵與廢棄建築，將各 feature 轉成方向固定的 empirical percentile，組內等權、三組各占 `1/3`；不以歷史或 T1 見鼠通報擬合係數。
 2. **Retrospective check**：用已存在、且團隊已看過的見鼠雷達資料檢查資料契約、偏差與初步空間相符；結果標記 `development-exposed`，不宣稱盲測。
 3. **Prospective report holdout**：封存 T0 後，對未來新通報執行時間向前評估，不在觀測窗中途改模。
-4. **Ablation and baselines**：分別檢查餐飲／市場、地下水道、廢棄建築的增益，並與人口／通報機會、單一土地使用及簡單空間 baseline 比較。
+4. **Ablation and baseline**：唯一正式 baseline 是 `food-only ranking`；固定比較 Full、Without Food、Without Sewer、Without Abandoned Building，不在看到 T1 後重定義變體。
 5. **Field-validation gate**：只有 prospective report-hotspot 結果有增益，才設計 E2／E3 現場正負樣本；通過前不建立 calibrated rat-presence model。
 
-模型家族、graph centrality、網格大小與技術框架本輪不決定。若未來納入 network features，centrality 只能是待驗證特徵；管網仍需保留方向、長度、坡度、缺漏與可能的雙向鼠類移動假設。
+第一版不是 fitted model，不使用 BigQuery ML、Vertex AI、GAM、boosted tree 或自動重訓。這些技術與任何額外 network feature 必須在取得適用標籤、另立 Model card 與時間向前 validation 後再決定。
 
 ### 7.2 評估設計
 
-- 時間向前切分，防止 future leakage。
-- Spatial block split，避免鄰近位置洩漏。
-- 留一行政區測試，觀察地理外推能力。
+- 以 T0 freeze 之後的新通報做時間向前 holdout，防止 future leakage；第一版沒有 fitted training split，Spatial block split 與留一行政區測試延後到未來 supervised challenger。
 - Primary：`Report Capture@K`，即 T0 Top-K／高分聚合區域在 T1 捕捉到的合格通報比例。
-- Primary comparator：相對預先鎖定簡單 baselines 的 lift；不得只和隨機結果比較。
+- Primary comparator：同一 grid、同一 area budget 的 frozen food-only ranking；同時回報 relative lift 與 absolute capture difference，不得只和隨機結果比較。
 - Ablation：餐飲／市場、地下水道、廢棄建築各自與組合模型的增量價值。
 - Bias checks：人口、步行／活動強度、行政區、媒體／平台成長與通報機會敏感度。
 - 投藥敏感度：只有取得可信的鼠類防治 exposure 後，才比較介入前後或分層結果；不得用疑似投藥通報推定實際處置。
@@ -301,6 +299,18 @@ stateDiagram-v2
 - 所有 retrospective、prospective 與未來 E2／E3 field results 分層報告。
 
 通報熱點相符不能替代實際鼠類活動或城市營運成效。即使第一階段成功，主張上限仍是「三組 T0 特徵對未來見鼠雷達通報分布具有時間向前的排序增益」。
+
+### 7.3 v0.1 prediction output contract
+
+- 分析單位固定為臺北研究邊界裁切後的 S2 Level 15 cell；`cell_id` 以 string 保存。
+- 主 ranking 由 Food、Sewer、Abandoned 三組等權平均；正式 baseline 是 Food-only。
+- 固定輸出 Full、Food-only、Without Food、Without Sewer、Without Abandoned Building ranks。
+- Primary Top-K 為臺北 eligible area 前 10%；5% 與 20% 只作預先登錄 sensitivity。
+- 每筆輸出必須綁定 `prediction_run_id`、`issued_at`、`as_of`、target window、feature snapshot、model version／digest 與 freeze lineage。
+- `structural_score` 是 ranking score；`calibrated_probability` 固定為 `null`。
+- 多次 prediction runs 形成 forecast-vintage history；不得把單一 window score 展開成虛構的 daily time series。
+
+Machine-readable transport projection 位於 `docs/openapi-v1.yaml`，完整欄位、endpoint、storage mapping 與 deferred capability 說明位於 `docs/API_CONTRACT.md`。兩者是本節的 subordinate contract；衝突時以 `docs/BELIEF.md` 與本文件為準。OpenAPI 可被 FastAPI 採用，不代表 endpoint、model artifact、runtime 或 deployment 已存在。
 
 ## 8. 資料、介面與治理邊界
 

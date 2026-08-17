@@ -1,0 +1,1136 @@
+openapi: 3.1.0
+info:
+  title: SubTerrat API
+  version: 0.1.0
+  description: >-
+    Contract-first API for frozen Taipei citizen-reported rat-hotspot spatial
+    rankings. This specification does not assert that an implementation or a
+    validated prediction model exists.
+  x-implementation-status: SPECIFICATION_ONLY
+  x-evidence-status: NO_TRUSTED_RESULT
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+servers:
+  - url: http://localhost:8080
+    description: Local development placeholder; no runtime is asserted.
+x-deferred-capabilities:
+  daily_time_series_forecast: false
+  scenario_simulation: false
+  calibrated_probability: false
+  live_coordinate_inference: false
+x-semantic-invariants:
+  - as_of must be less than or equal to issued_at
+  - official_t0 target_window.start must be greater than as_of
+  - target_window.end must be greater than target_window.start
+  - T1 outcome must not be used to recalculate the same frozen T0 run
+  - a completed prediction run is not automatically frozen or published
+tags:
+  - name: Capabilities
+  - name: Map
+  - name: Releases
+  - name: Predictions
+  - name: Operations
+paths:
+  /api/v1/model-capabilities:
+    get:
+      tags: [Capabilities]
+      operationId: getModelCapabilities
+      summary: Read supported and unsupported model outputs
+      security: []
+      responses:
+        "200":
+          description: Capability declaration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelCapabilities"
+
+  /api/v1/map/bootstrap:
+    get:
+      tags: [Map]
+      operationId: getMapBootstrap
+      summary: Load Flutter map configuration and layer availability
+      security: []
+      responses:
+        "200":
+          description: Map bootstrap configuration
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MapBootstrap"
+        "404":
+          $ref: "#/components/responses/NoPublishedRelease"
+
+  /api/v1/releases/current:
+    get:
+      tags: [Releases]
+      operationId: getCurrentRelease
+      summary: Resolve the current human-approved public release
+      security: []
+      responses:
+        "200":
+          description: Current immutable release pointer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentRelease"
+        "404":
+          $ref: "#/components/responses/NoPublishedRelease"
+
+  /api/v1/releases/{release_id}:
+    parameters:
+      - $ref: "#/components/parameters/ReleaseId"
+    get:
+      tags: [Releases]
+      operationId: getRelease
+      summary: Read immutable public release metadata
+      security: []
+      responses:
+        "200":
+          description: Release metadata and claim boundary
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Release"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/releases/{release_id}/cells:
+    parameters:
+      - $ref: "#/components/parameters/ReleaseId"
+      - $ref: "#/components/parameters/Bbox"
+      - $ref: "#/components/parameters/Layers"
+      - $ref: "#/components/parameters/Limit"
+      - $ref: "#/components/parameters/PageToken"
+    get:
+      tags: [Map, Predictions]
+      operationId: listReleaseCells
+      summary: Read frozen S2 cells intersecting a WGS84 bounding box
+      description: >-
+        Returns only sanitized public serving fields. The response never reads
+        exact T1 report points, raw reports, complete sewer geometry, or precise
+        residences and businesses.
+      security: []
+      responses:
+        "200":
+          description: GeoJSON feature collection of frozen S2 cells
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/geo+json:
+              schema:
+                $ref: "#/components/schemas/CellFeatureCollection"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/v1/releases/{release_id}/cells/{cell_id}:
+    parameters:
+      - $ref: "#/components/parameters/ReleaseId"
+      - $ref: "#/components/parameters/CellId"
+    get:
+      tags: [Map, Predictions]
+      operationId: getReleaseCell
+      summary: Read one frozen cell and its explanation fields
+      security: []
+      responses:
+        "200":
+          description: Cell detail
+          headers:
+            ETag:
+              $ref: "#/components/headers/ETag"
+          content:
+            application/geo+json:
+              schema:
+                $ref: "#/components/schemas/CellFeature"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/cells/{cell_id}/forecast-history:
+    parameters:
+      - $ref: "#/components/parameters/CellId"
+      - $ref: "#/components/parameters/FromTime"
+      - $ref: "#/components/parameters/ToTime"
+      - $ref: "#/components/parameters/Limit"
+      - $ref: "#/components/parameters/PageToken"
+    get:
+      tags: [Predictions]
+      operationId: getCellForecastHistory
+      summary: Read published prediction vintages for one cell
+      description: >-
+        This is a history of separately issued forecast-window rankings. It is
+        not a daily model forecast and missing dates are never interpolated.
+      security: []
+      responses:
+        "200":
+          description: Forecast vintage history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForecastHistory"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /api/v1/releases/{release_id}/stats:
+    parameters:
+      - $ref: "#/components/parameters/ReleaseId"
+      - name: area_type
+        in: query
+        required: false
+        description: Aggregation geography. District is allowed only for sanitized public summaries.
+        schema:
+          type: string
+          enum: [taipei, district]
+          default: taipei
+    get:
+      tags: [Map, Releases]
+      operationId: getReleaseStats
+      summary: Read public aggregate coverage and rank-band statistics
+      security: []
+      responses:
+        "200":
+          description: Public aggregate statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReleaseStats"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /internal/v1/prediction-runs:
+    post:
+      tags: [Predictions]
+      operationId: createPredictionRun
+      summary: Create an authorized deterministic batch prediction run
+      description: >-
+        Validates and records a batch request. It must not calculate scores in
+        the HTTP request and it does not freeze or publish the completed run.
+      security:
+        - googleOidc: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PredictionRunRequest"
+      responses:
+        "202":
+          description: Prediction run accepted for batch execution
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PredictionRun"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /internal/v1/prediction-runs/{prediction_run_id}:
+    parameters:
+      - $ref: "#/components/parameters/PredictionRunId"
+    get:
+      tags: [Predictions]
+      operationId: getPredictionRun
+      summary: Read batch prediction run status and provenance
+      security:
+        - googleOidc: []
+      responses:
+        "200":
+          description: Prediction run state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PredictionRun"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /healthz:
+    get:
+      tags: [Operations]
+      operationId: getHealth
+      summary: Report process liveness only
+      security: []
+      responses:
+        "200":
+          description: Process is alive; no model-validity claim is implied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+
+  /readyz:
+    get:
+      tags: [Operations]
+      operationId: getReadiness
+      summary: Report whether the current public release can be served
+      security: []
+      responses:
+        "200":
+          description: Public serving dependency is ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Readiness"
+        "503":
+          description: Public serving dependency is not ready
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/Problem"
+
+components:
+  securitySchemes:
+    googleOidc:
+      type: openIdConnect
+      openIdConnectUrl: https://accounts.google.com/.well-known/openid-configuration
+      description: Internal Cloud Run IAM/OIDC identity; never embedded as a Flutter secret.
+
+  headers:
+    ETag:
+      description: Validator derived from the immutable frozen payload digest.
+      schema:
+        type: string
+
+  parameters:
+    ReleaseId:
+      name: release_id
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    PredictionRunId:
+      name: prediction_run_id
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    CellId:
+      name: cell_id
+      in: path
+      required: true
+      description: S2 cell identifier encoded as a string to preserve 64-bit precision.
+      schema:
+        type: string
+        pattern: "^[0-9]+$"
+    Bbox:
+      name: bbox
+      in: query
+      required: true
+      description: WGS84 west,south,east,north bounding box.
+      schema:
+        type: string
+        pattern: "^-?[0-9]+(?:\\.[0-9]+)?,-?[0-9]+(?:\\.[0-9]+)?,-?[0-9]+(?:\\.[0-9]+)?,-?[0-9]+(?:\\.[0-9]+)?$"
+    Layers:
+      name: layers
+      in: query
+      required: false
+      style: form
+      explode: false
+      schema:
+        type: array
+        minItems: 1
+        uniqueItems: true
+        items:
+          type: string
+          enum: [structural_score, data_coverage, approved_report_count]
+        default: [structural_score, data_coverage]
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 1500
+        default: 500
+    PageToken:
+      name: page_token
+      in: query
+      required: false
+      schema:
+        type: string
+        minLength: 1
+    FromTime:
+      name: from
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date-time
+    ToTime:
+      name: to
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date-time
+
+  responses:
+    NoPublishedRelease:
+      description: No human-approved public release exists
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+          examples:
+            noRelease:
+              value:
+                type: about:blank
+                title: No published release
+                status: 404
+                code: NO_PUBLISHED_RELEASE
+                detail: No human-approved public release is available.
+                request_id: request-placeholder
+    NotFound:
+      description: Requested immutable resource was not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    ValidationError:
+      description: Request violates the declared API contract
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+    Conflict:
+      description: State, data-gate, or idempotency conflict
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+
+  schemas:
+    CapabilityState:
+      type: string
+      enum: [PLANNED, AVAILABLE, CONDITIONAL, NOT_SUPPORTED]
+
+    ModelCapabilities:
+      type: object
+      additionalProperties: false
+      required:
+        - contract_version
+        - implementation_status
+        - evidence_status
+        - score_kind
+        - capabilities
+      properties:
+        contract_version:
+          type: string
+          const: 0.1.0
+        implementation_status:
+          type: string
+          enum: [SPECIFICATION_ONLY, IMPLEMENTED_UNVALIDATED, RUNTIME_VALIDATED]
+          default: SPECIFICATION_ONLY
+        evidence_status:
+          type: string
+          const: NO_TRUSTED_RESULT
+        score_kind:
+          type: string
+          const: structural_report_hotspot_ranking
+        capabilities:
+          type: object
+          additionalProperties: false
+          required:
+            - spatial_ranking
+            - forecast_window
+            - forecast_vintage_history
+            - aggregated_released_outcome
+            - daily_time_series_forecast
+            - scenario_simulation
+            - calibrated_probability
+            - live_coordinate_inference
+          properties:
+            spatial_ranking:
+              $ref: "#/components/schemas/CapabilityState"
+            forecast_window:
+              $ref: "#/components/schemas/CapabilityState"
+            forecast_vintage_history:
+              $ref: "#/components/schemas/CapabilityState"
+            aggregated_released_outcome:
+              $ref: "#/components/schemas/CapabilityState"
+            daily_time_series_forecast:
+              type: string
+              const: NOT_SUPPORTED
+            scenario_simulation:
+              type: string
+              const: NOT_SUPPORTED
+            calibrated_probability:
+              type: string
+              const: NOT_SUPPORTED
+            live_coordinate_inference:
+              type: string
+              const: NOT_SUPPORTED
+        limitations:
+          type: array
+          items:
+            type: string
+
+    LayerAvailability:
+      type: object
+      additionalProperties: false
+      required: [id, label, availability]
+      properties:
+        id:
+          type: string
+          enum: [structural_score, data_coverage, approved_report_count]
+        label:
+          type: string
+        availability:
+          type: string
+          enum: [available, withheld, not_produced]
+        reason:
+          type: [string, "null"]
+
+    Bounds:
+      type: object
+      additionalProperties: false
+      required: [west, south, east, north]
+      properties:
+        west:
+          type: number
+          minimum: -180
+          maximum: 180
+        south:
+          type: number
+          minimum: -90
+          maximum: 90
+        east:
+          type: number
+          minimum: -180
+          maximum: 180
+        north:
+          type: number
+          minimum: -90
+          maximum: 90
+
+    Camera:
+      type: object
+      additionalProperties: false
+      required: [latitude, longitude, zoom]
+      properties:
+        latitude:
+          type: number
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          minimum: -180
+          maximum: 180
+        zoom:
+          type: number
+          minimum: 0
+          maximum: 24
+
+    MapBootstrap:
+      type: object
+      additionalProperties: false
+      required:
+        - api_version
+        - current_release_id
+        - taipei_bounds
+        - default_camera
+        - layers
+        - evidence_status
+        - claim_scope
+      properties:
+        api_version:
+          type: string
+          const: v1
+        current_release_id:
+          type: string
+        taipei_bounds:
+          $ref: "#/components/schemas/Bounds"
+        default_camera:
+          $ref: "#/components/schemas/Camera"
+        layers:
+          type: array
+          items:
+            $ref: "#/components/schemas/LayerAvailability"
+        evidence_status:
+          type: string
+          const: NO_TRUSTED_RESULT
+        claim_scope:
+          type: string
+          const: future_approved_citizen_report_hotspot_ranking
+        limitation_codes:
+          type: array
+          items:
+            type: string
+
+    CurrentRelease:
+      type: object
+      additionalProperties: false
+      required: [release_id, href]
+      properties:
+        release_id:
+          type: string
+        href:
+          type: string
+          format: uri-reference
+
+    ForecastWindow:
+      type: object
+      additionalProperties: false
+      required: [start, end]
+      properties:
+        start:
+          type: string
+          format: date-time
+        end:
+          type: string
+          format: date-time
+
+    Release:
+      type: object
+      additionalProperties: false
+      required:
+        - release_id
+        - freeze_id
+        - prediction_run_id
+        - publication_approved
+        - published_at
+        - t0_cutoff
+        - target_window
+        - model_version
+        - model_digest
+        - map_digest
+        - grid_version
+        - claim_scope
+        - evidence_status
+        - limitation_codes
+      properties:
+        release_id:
+          type: string
+        freeze_id:
+          type: string
+        prediction_run_id:
+          type: string
+        publication_approved:
+          type: boolean
+          const: true
+        published_at:
+          type: string
+          format: date-time
+        t0_cutoff:
+          type: string
+          format: date-time
+        target_window:
+          $ref: "#/components/schemas/ForecastWindow"
+        model_version:
+          type: string
+        model_digest:
+          type: string
+          pattern: "^sha256:[a-f0-9]{64}$"
+        map_digest:
+          type: string
+          pattern: "^sha256:[a-f0-9]{64}$"
+        grid_version:
+          type: string
+        claim_scope:
+          type: string
+          const: future_approved_citizen_report_hotspot_ranking
+        evidence_status:
+          type: string
+          const: NO_TRUSTED_RESULT
+        source_dates:
+          type: object
+          additionalProperties:
+            type: string
+            format: date-time
+        limitation_codes:
+          type: array
+          minItems: 1
+          items:
+            type: string
+
+    ScoreComponents:
+      type: object
+      additionalProperties: false
+      required: [food, sewer, abandoned]
+      properties:
+        food:
+          type: [number, "null"]
+          minimum: 0
+          maximum: 1
+        sewer:
+          type: [number, "null"]
+          minimum: 0
+          maximum: 1
+        abandoned:
+          type: [number, "null"]
+          minimum: 0
+          maximum: 1
+
+    RankVariants:
+      type: object
+      additionalProperties: false
+      required:
+        - main
+        - food_only
+        - without_food
+        - without_sewer
+        - without_abandoned
+      properties:
+        main:
+          type: [integer, "null"]
+          minimum: 1
+        food_only:
+          type: [integer, "null"]
+          minimum: 1
+        without_food:
+          type: [integer, "null"]
+          minimum: 1
+        without_sewer:
+          type: [integer, "null"]
+          minimum: 1
+        without_abandoned:
+          type: [integer, "null"]
+          minimum: 1
+
+    TopKFlags:
+      type: object
+      additionalProperties: false
+      required: [top_05, top_10, top_20]
+      properties:
+        top_05:
+          type: boolean
+        top_10:
+          type: boolean
+        top_20:
+          type: boolean
+
+    ReleasedOutcomeSummary:
+      type: object
+      additionalProperties: false
+      required: [availability, suppressed, approved_report_count, count_band]
+      properties:
+        availability:
+          type: string
+          enum: [released, withheld, not_observed]
+        suppressed:
+          type: boolean
+        approved_report_count:
+          type: [integer, "null"]
+          minimum: 0
+        count_band:
+          type: [string, "null"]
+        observation_window:
+          oneOf:
+            - $ref: "#/components/schemas/ForecastWindow"
+            - type: "null"
+        field_verified:
+          type: boolean
+          const: false
+
+    CellProperties:
+      type: object
+      additionalProperties: false
+      required:
+        - cell_id
+        - prediction_run_id
+        - score_kind
+        - structural_score
+        - rank_percentile
+        - calibrated_probability
+        - components
+        - ranks
+        - top_k
+        - coverage_state
+        - freshness
+        - limitation_codes
+      properties:
+        cell_id:
+          type: string
+          pattern: "^[0-9]+$"
+        prediction_run_id:
+          type: string
+        score_kind:
+          type: string
+          const: structural_report_hotspot_ranking
+        structural_score:
+          type: [number, "null"]
+          minimum: 0
+          maximum: 1
+        rank_percentile:
+          type: [number, "null"]
+          minimum: 0
+          maximum: 1
+        calibrated_probability:
+          type: "null"
+        components:
+          $ref: "#/components/schemas/ScoreComponents"
+        ranks:
+          $ref: "#/components/schemas/RankVariants"
+        top_k:
+          $ref: "#/components/schemas/TopKFlags"
+        coverage_state:
+          type: string
+          enum: [eligible, unscored_missing_group, excluded_boundary, withheld]
+        freshness:
+          type: string
+          enum: [current, stale, unknown]
+        limitation_codes:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        released_outcome:
+          $ref: "#/components/schemas/ReleasedOutcomeSummary"
+
+    Position:
+      type: array
+      prefixItems:
+        - type: number
+          minimum: -180
+          maximum: 180
+        - type: number
+          minimum: -90
+          maximum: 90
+      minItems: 2
+      maxItems: 2
+
+    LinearRing:
+      type: array
+      minItems: 4
+      items:
+        $ref: "#/components/schemas/Position"
+
+    PolygonCoordinates:
+      type: array
+      minItems: 1
+      items:
+        $ref: "#/components/schemas/LinearRing"
+
+    GeoJsonPolygon:
+      type: object
+      additionalProperties: false
+      required: [type, coordinates]
+      properties:
+        type:
+          type: string
+          const: Polygon
+        coordinates:
+          $ref: "#/components/schemas/PolygonCoordinates"
+
+    GeoJsonMultiPolygon:
+      type: object
+      additionalProperties: false
+      required: [type, coordinates]
+      properties:
+        type:
+          type: string
+          const: MultiPolygon
+        coordinates:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/PolygonCoordinates"
+
+    CellFeature:
+      type: object
+      additionalProperties: false
+      required: [type, id, geometry, properties]
+      properties:
+        type:
+          type: string
+          const: Feature
+        id:
+          type: string
+          pattern: "^[0-9]+$"
+        geometry:
+          oneOf:
+            - $ref: "#/components/schemas/GeoJsonPolygon"
+            - $ref: "#/components/schemas/GeoJsonMultiPolygon"
+        properties:
+          $ref: "#/components/schemas/CellProperties"
+
+    CellFeatureCollection:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - release_id
+        - prediction_run_id
+        - target_window
+        - features
+        - next_page_token
+        - truncated
+      properties:
+        type:
+          type: string
+          const: FeatureCollection
+        release_id:
+          type: string
+        prediction_run_id:
+          type: string
+        target_window:
+          $ref: "#/components/schemas/ForecastWindow"
+        features:
+          type: array
+          maxItems: 1500
+          items:
+            $ref: "#/components/schemas/CellFeature"
+        next_page_token:
+          type: [string, "null"]
+        truncated:
+          type: boolean
+          const: false
+
+    ForecastVintage:
+      type: object
+      additionalProperties: false
+      required:
+        - prediction_run_id
+        - release_id
+        - issued_at
+        - as_of
+        - target_window
+        - model_version
+        - structural_score
+        - rank_percentile
+        - calibrated_probability
+      properties:
+        prediction_run_id:
+          type: string
+        release_id:
+          type: string
+        issued_at:
+          type: string
+          format: date-time
+        as_of:
+          type: string
+          format: date-time
+        target_window:
+          $ref: "#/components/schemas/ForecastWindow"
+        model_version:
+          type: string
+        structural_score:
+          type: [number, "null"]
+          minimum: 0
+          maximum: 1
+        rank_percentile:
+          type: [number, "null"]
+          minimum: 0
+          maximum: 1
+        calibrated_probability:
+          type: "null"
+
+    ForecastHistory:
+      type: object
+      additionalProperties: false
+      required: [cell_id, series_kind, daily_time_series, entries, next_page_token]
+      properties:
+        cell_id:
+          type: string
+          pattern: "^[0-9]+$"
+        series_kind:
+          type: string
+          const: forecast_vintages
+        daily_time_series:
+          type: boolean
+          const: false
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/ForecastVintage"
+        next_page_token:
+          type: [string, "null"]
+
+    AreaStats:
+      type: object
+      additionalProperties: false
+      required:
+        - area_id
+        - area_name
+        - eligible_cell_count
+        - coverage_fraction
+        - selected_area_fraction
+      properties:
+        area_id:
+          type: string
+        area_name:
+          type: string
+        eligible_cell_count:
+          type: integer
+          minimum: 0
+        coverage_fraction:
+          type: number
+          minimum: 0
+          maximum: 1
+        selected_area_fraction:
+          type: number
+          minimum: 0
+          maximum: 1
+        released_approved_report_count:
+          type: [integer, "null"]
+          minimum: 0
+        outcome_suppressed:
+          type: boolean
+          default: true
+
+    ReleaseStats:
+      type: object
+      additionalProperties: false
+      required: [release_id, area_type, areas]
+      properties:
+        release_id:
+          type: string
+        area_type:
+          type: string
+          enum: [taipei, district]
+        areas:
+          type: array
+          items:
+            $ref: "#/components/schemas/AreaStats"
+
+    PredictionRunRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - run_kind
+        - feature_snapshot_id
+        - model_version
+        - as_of
+        - target_window
+        - idempotency_key
+      properties:
+        run_kind:
+          type: string
+          enum: [official_t0, retrospective_check]
+        feature_snapshot_id:
+          type: string
+          minLength: 1
+        model_version:
+          type: string
+          minLength: 1
+        as_of:
+          type: string
+          format: date-time
+        target_window:
+          $ref: "#/components/schemas/ForecastWindow"
+        idempotency_key:
+          type: string
+          minLength: 16
+          maxLength: 128
+
+    PredictionRun:
+      type: object
+      additionalProperties: false
+      required:
+        - prediction_run_id
+        - run_kind
+        - status
+        - feature_snapshot_id
+        - model_version
+        - as_of
+        - target_window
+        - request_digest
+        - created_at
+      properties:
+        prediction_run_id:
+          type: string
+        run_kind:
+          type: string
+          enum: [official_t0, retrospective_check]
+        status:
+          type: string
+          enum: [queued, running, completed, failed, frozen]
+        feature_snapshot_id:
+          type: string
+        model_version:
+          type: string
+        model_digest:
+          type: [string, "null"]
+          pattern: "^sha256:[a-f0-9]{64}$"
+        as_of:
+          type: string
+          format: date-time
+        target_window:
+          $ref: "#/components/schemas/ForecastWindow"
+        request_digest:
+          type: string
+          pattern: "^sha256:[a-f0-9]{64}$"
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type: [string, "null"]
+          format: date-time
+        completed_at:
+          type: [string, "null"]
+          format: date-time
+        failure_code:
+          type: [string, "null"]
+        freeze_id:
+          type: [string, "null"]
+
+    Health:
+      type: object
+      additionalProperties: false
+      required: [status, proof_scope]
+      properties:
+        status:
+          type: string
+          const: alive
+        proof_scope:
+          type: string
+          const: process_liveness_only
+
+    Readiness:
+      type: object
+      additionalProperties: false
+      required: [status, current_release_id, proof_scope]
+      properties:
+        status:
+          type: string
+          const: ready
+        current_release_id:
+          type: string
+        proof_scope:
+          type: string
+          const: public_release_serving_only
+
+    Problem:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code, detail, request_id]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        code:
+          type: string
+          enum:
+            - NO_PUBLISHED_RELEASE
+            - RELEASE_NOT_FOUND
+            - CELL_NOT_FOUND
+            - INVALID_BBOX
+            - INVALID_TIME_WINDOW
+            - CAPABILITY_NOT_AVAILABLE
+            - DATA_GATE_FAILED
+            - STATE_CONFLICT
+            - IDEMPOTENCY_CONFLICT
+            - FORBIDDEN_DATA_SCOPE
+            - INTERNAL_ERROR
+        detail:
+          type: string
+        request_id:
+          type: string
