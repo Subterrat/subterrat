@@ -1,0 +1,13 @@
+steps:
+  - name: ghcr.io/cirruslabs/flutter:stable@sha256:46691e311715845de03a3ba4753a475476936805b29431b1f00f1816981033f8
+    entrypoint: bash
+    env:
+      - GOOGLE_MAPS_API_KEY=test-browser-key
+    args:
+      - -ceu
+      - |
+        git -C "$$FLUTTER_ROOT" fetch --depth 1 origin tag 3.47.0
+        git -C "$$FLUTTER_ROOT" checkout 3.47.0
+        ./deploy/write_flutter_env.sh .env
+        flutter pub get
+        flutter test test/map_label_style_test.dart

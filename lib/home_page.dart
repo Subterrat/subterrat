@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import 'api.dart';
+import 'map_label_style.dart';
 import 'models.dart';
 import 'sim.dart';
 import 'theme.dart';
@@ -264,16 +265,15 @@ class _HomePageState extends State<HomePage> {
 
   /// 把標籤文字畫成圖片，才能當成地圖標記顯示。
   /// google_maps_flutter 沒辦法直接在圖上放文字。
-  Future<BitmapDescriptor> _labelBitmap(String text) async {
+  Future<BitmapDescriptor> _labelBitmap(
+    String text,
+    TextStyle textStyle,
+  ) async {
     const scale = 3.0;
     final tp = TextPainter(
       text: TextSpan(
         text: text,
-        style: TextStyle(
-          fontSize: 11 * scale,
-          fontWeight: FontWeight.w700,
-          color: Palette.uncertaintyInk,
-        ),
+        style: textStyle,
       ),
       textDirection: TextDirection.ltr,
     )..layout();
@@ -303,9 +303,13 @@ class _HomePageState extends State<HomePage> {
   Future<void> _buildLabels() async {
     final tops = _topHotspots();
     const names = ['高風險範圍', '較高風險範圍', '較高風險範圍'];
+    final textStyle = await loadMapLabelTextStyle(
+      fontSize: 33,
+      color: Palette.uncertaintyInk,
+    );
     final made = <String, BitmapDescriptor>{};
     for (var i = 0; i < tops.length; i++) {
-      made[tops[i].cellId] = await _labelBitmap(names[i]);
+      made[tops[i].cellId] = await _labelBitmap(names[i], textStyle);
     }
     if (!mounted) return;
     setState(() {

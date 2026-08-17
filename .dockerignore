@@ -1,0 +1,12 @@
+.git
+.coh
+.dart_tool
+.env
+.idea
+.vscode
+build
+docs
+tests
+test
+*.csv
+*.log

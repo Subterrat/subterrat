@@ -1,0 +1,9 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    entrypoint: ./deploy/build_frontend.sh
+    env:
+      - IMAGE=${_IMAGE}
+      - GOOGLE_MAPS_API_KEY=${_GOOGLE_MAPS_API_KEY}
+
+images:
+  - ${_IMAGE}
