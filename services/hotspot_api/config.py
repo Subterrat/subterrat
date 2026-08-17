@@ -1,0 +1,42 @@
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass
+from functools import lru_cache
+
+
+def _split_csv(value: str) -> tuple[str, ...]:
+    return tuple(item.strip() for item in value.split(",") if item.strip())
+
+
+@dataclass(frozen=True)
+class Settings:
+    project_id: str
+    bq_location: str
+    bq_dataset: str
+    bq_table: str
+    release_id: str
+    max_features_per_request: int
+    cors_allow_origins: tuple[str, ...]
+
+    @property
+    def table_ref(self) -> str:
+        return f"{self.project_id}.{self.bq_dataset}.{self.bq_table}"
+
+
+@lru_cache
+def get_settings() -> Settings:
+    # Env var names match GitHub issue #4's "Runtime 設定" section.
+    return Settings(
+        project_id=os.environ.get("GOOGLE_CLOUD_PROJECT", "devjam26aug17tpe-1270"),
+        bq_location=os.environ.get("BQ_LOCATION", "asia-east1"),
+        bq_dataset=os.environ.get("BQ_DATASET", "subterrat_predictions"),
+        bq_table=os.environ.get("BQ_TABLE", "map_hotspot_cells_t0"),
+        release_id=os.environ.get(
+            "RELEASE_ID", "t0-layerwise-development-20260817-v2"
+        ),
+        max_features_per_request=int(
+            os.environ.get("MAX_FEATURES_PER_REQUEST", "1500")
+        ),
+        cors_allow_origins=_split_csv(os.environ.get("PUBLIC_CORS_ORIGINS", "")),
+    )

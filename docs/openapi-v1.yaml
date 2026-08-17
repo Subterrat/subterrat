@@ -734,6 +734,38 @@ components:
           type: boolean
           const: false
 
+    RawLayerFields:
+      description: >-
+        Passthrough of `map_hotspot_cells_t0` columns (see
+        sql/structural/07_materialize_map_payload.sql) that don't map onto
+        any modeled CellProperties field, kept as its own labeled object
+        instead of loosening CellProperties' additionalProperties. Added for
+        GitHub issue #4's Cloud Run MVP, which serves this table directly.
+      type: object
+      additionalProperties: false
+      properties:
+        food_top_area:
+          type: [boolean, "null"]
+        sewer_top_area:
+          type: [boolean, "null"]
+        sewer_has_score:
+          type: [boolean, "null"]
+        sewer_coverage_state:
+          type: [string, "null"]
+        unused_public_building_address_point_count:
+          type: [integer, "null"]
+          minimum: 0
+        building_overlay_state:
+          type: [string, "null"]
+        freeze_id:
+          type: [string, "null"]
+        model_kind:
+          type: [string, "null"]
+        score_semantics:
+          type: [string, "null"]
+        evidence_state:
+          type: [string, "null"]
+
     CellProperties:
       type: object
       additionalProperties: false
@@ -774,7 +806,13 @@ components:
         ranks:
           $ref: "#/components/schemas/RankVariants"
         top_k:
-          $ref: "#/components/schemas/TopKFlags"
+          # null when no combined three-group MainScore has been computed
+          # yet (e.g. the abandoned-building layer is overlay-only, not a
+          # ranked citywide feature — see contracts/structural_score_v0_1.json
+          # layerwise_policy.missing_layer_action). Never fabricated.
+          oneOf:
+            - $ref: "#/components/schemas/TopKFlags"
+            - type: "null"
         coverage_state:
           type: string
           enum: [eligible, unscored_missing_group, excluded_boundary, withheld]
@@ -788,6 +826,8 @@ components:
             type: string
         released_outcome:
           $ref: "#/components/schemas/ReleasedOutcomeSummary"
+        raw_layer_fields:
+          $ref: "#/components/schemas/RawLayerFields"
 
     Position:
       type: array
@@ -876,7 +916,12 @@ components:
         prediction_run_id:
           type: string
         target_window:
-          $ref: "#/components/schemas/ForecastWindow"
+          # null for a development-exposed retrospective freeze that has no
+          # real official_t0 observation window (docs/V0_1_RUNBOOK.md) —
+          # never fabricated.
+          oneOf:
+            - $ref: "#/components/schemas/ForecastWindow"
+            - type: "null"
         features:
           type: array
           maxItems: 1500
@@ -1122,6 +1167,7 @@ components:
             - NO_PUBLISHED_RELEASE
             - RELEASE_NOT_FOUND
             - CELL_NOT_FOUND
+            - PREDICTION_RUN_NOT_FOUND
             - INVALID_BBOX
             - INVALID_TIME_WINDOW
             - CAPABILITY_NOT_AVAILABLE
