@@ -1,0 +1,37 @@
+name: subterrat_app
+description: "SubTerrat — 臺北見鼠通報熱點預測介面"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  google_maps_flutter: ^2.9.0
+  http: ^1.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  fonts:
+    # DM Mono 只用在數值與代號欄位（release_id、freeze_id 等）。
+    # Latin only，兩個字重加起來約 100KB，對載入速度影響很小。
+    # 中文沿用系統字型，不打包 CJK 字型以免 web 首次載入變慢。
+    # 授權：SIL Open Font License，全文見 assets/fonts/OFL.txt
+    - family: DM Mono
+      fonts:
+        - asset: assets/fonts/DMMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/DMMono-Medium.ttf
+          weight: 500

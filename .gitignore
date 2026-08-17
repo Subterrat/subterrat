@@ -1,5 +1,25 @@
-.venv/
-__pycache__/
-*.pyc
-artifacts/
+# Flutter / Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# 系統
 .DS_Store
+Thumbs.db
+
+# 安全性：不要提交任何含實際金鑰的檔案。
+# web/index.html 本身要進版控（Flutter web 需要它），
+# 但裡面的金鑰必須維持佔位字串。做法見 README。
+*.key
+*.pem
+.env
+.env.*
