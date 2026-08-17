@@ -24,14 +24,15 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  fonts:
-    # DM Mono 只用在數值與代號欄位（release_id、freeze_id 等）。
-    # Latin only，兩個字重加起來約 100KB，對載入速度影響很小。
-    # 中文沿用系統字型，不打包 CJK 字型以免 web 首次載入變慢。
-    # 授權：SIL Open Font License，全文見 assets/fonts/OFL.txt
-    - family: DM Mono
-      fonts:
-        - asset: assets/fonts/DMMono-Regular.ttf
-          weight: 400
-        - asset: assets/fonts/DMMono-Medium.ttf
-          weight: 500
+  # DM Mono 字型檔（assets/fonts/DMMono-*.ttf）從未進版控，`fonts:` 宣告指到
+  # 不存在的檔案會讓 `flutter pub get`／build 失敗。移除宣告前先確認過
+  # lib/theme.dart 的 kMonoFamily 只是一個 fontFamily 字串常數：字型缺席時
+  # Flutter 會安靜地退回預設字型，不會噴例外。要恢復 DM Mono，把檔案放進
+  # assets/fonts/ 後解除下面的註解即可。
+  # fonts:
+  #   - family: DM Mono
+  #     fonts:
+  #       - asset: assets/fonts/DMMono-Regular.ttf
+  #         weight: 400
+  #       - asset: assets/fonts/DMMono-Medium.ttf
+  #         weight: 500
