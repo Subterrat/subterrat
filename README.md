@@ -4,16 +4,14 @@
 
 ## 先設定 Maps 金鑰
 
-`web/index.html` 裡的金鑰是佔位字串 `YOUR_MAPS_API_KEY`。**這個檔案要進版控，但金鑰不能進版控。**
-
-在自己電腦上替換：
+金鑰走 `.env`（`flutter_dotenv`），不寫死在 `web/index.html` 裡——`lib/maps_bootstrap.dart` 會在 `main()` 讀到金鑰後才動態插入 Google Maps 的 `<script>` 標籤，所以 `web/index.html` 本身完全不含任何金鑰或佔位字串。
 
 ```bash
-# 把 YOUR_MAPS_API_KEY 換成實際金鑰後，叫 git 不要追蹤這個檔案的變動
-git update-index --skip-worktree web/index.html
+cp .env.example .env
+# 編輯 .env，把 YOUR_MAPS_API_KEY 換成實際金鑰
 ```
 
-這樣你本機有真金鑰，但 `git status` 不會顯示、也不會不小心提交。要改回追蹤用 `--no-skip-worktree`。
+`.env` 已經在 `.gitignore`（連同 `.env.*`），`.env.example` 才是進版控的範本，改 `.env` 不會被 git 追蹤到。沒有 `.env` 或金鑰還是佔位字串時，`main()` 會直接跳過插入 script，介面照樣跑得起來，只是地圖不會出現。
 
 金鑰在 Google Cloud Console 設兩層限制：
 
@@ -37,22 +35,28 @@ flutter run -d chrome
 flutter run -d chrome --dart-define=API_BASE=https://your-service.run.app
 ```
 
-## 後端需要提供的四個端點
+`API_BASE` 指向 `services/hotspot_api`（同 GCP project 下讀 BigQuery 的 FastAPI 服務）。部署到 Cloud Run 時記得設 `PUBLIC_CORS_ORIGINS` 環境變數（見該服務的 `config.py`），包含這個前端實際會跑的網域，不設的話瀏覽器會整個擋掉跨網域請求。
+
+## 後端端點
+
+契約定義在 `docs/API_CONTRACT.md`；下面是 `services/hotspot_api` 目前**實際有實作**、`lib/api.dart` 會呼叫的部分：
 
 | 端點 | 用途 |
 | --- | --- |
-| `GET /api/risk?top=380` | 網格與結構性分數 |
-| `GET /api/observed` | 見鼠雷達通報，用來算命中率 |
-| `GET /api/provenance` | release_id、freeze_id、分數語意、證據狀態 |
-| `POST /api/reports` | 民眾通報 |
+| `GET /api/v1/map/bootstrap` | 目前 release id、臺北市 bbox、圖層可用性 |
+| `GET /api/v1/releases/current` | 指向目前公開的 release |
+| `GET /api/v1/releases/{release_id}/cells?bbox=...` | 網格與分數，GeoJSON、依 bbox 分頁 |
 
-回傳格式見 `lib/models.dart` 的 `fromJson`。
+`GET /api/observed`（見鼠雷達通報）與 `POST /api/reports`（民眾通報）**在後端完全沒有對應端點**，不是還沒接上而是還沒被實作，`lib/api.dart` 目前對這兩塊固定回傳本機/空資料，等後端補上再串。
+
+回傳格式見 `lib/models.dart` 的 `RiskCell.fromGeoJsonFeature`。有一點目前串接上要注意：`structural_score` 現在**一律是 `null`**——`MainScore` 要 food／sewer／abandoned 三組分項都到位才能合成，但「廢棄建築」還沒有 citywide 排名資料，後端不會為了湊一個總分而造假。畫面上排序與地圖上色改用 `RiskCell.rankScore`（可得分項的平均值），不是通過驗證的綜合分數。
 
 ## 檔案結構
 
 | 檔案 | 內容 |
 | --- | --- |
-| `lib/main.dart` | 進入點，讀 `API_BASE` |
+| `lib/main.dart` | 進入點，讀 `API_BASE`，載入 `.env` 並注入 Maps script |
+| `lib/maps_bootstrap.dart` | 動態插入 Google Maps JS SDK `<script>`，金鑰來自 `.env` |
 | `lib/theme.dart` | 色票、字級、熱點色階、去飽和底圖樣式 |
 | `lib/models.dart` | 資料模型與列舉 |
 | `lib/sim.dart` | 鼠群族群機制模型 |
@@ -71,14 +75,10 @@ flutter run -d chrome --dart-define=API_BASE=https://your-service.run.app
 
 **格子數上限 380。** `google_maps_flutter` 畫太多 Polygon 會掉幀。
 
-## 字型
-
-`assets/fonts/` 只放 DM Mono（Latin，約 100KB），用在代號與數值欄位。中文沿用系統字型，不打包 CJK 字型以免 web 首次載入變慢。
-
-DM Mono 採 SIL Open Font License，授權全文在 `assets/fonts/OFL.txt`，散布時要一併保留。
-
 ## 待辦
 
 - logo 色碼與圖檔目前是佔位值（`Palette.brand` / `_BrandMark`）
 - Figma 的主色還是綠色 `#126D50`，需與這裡的深藍同步
 - 字級：Figma 原稿最小 7px，這裡拉到 11px 起跳（7px 投影看不見），Figma 需跟著調
+- 「廢棄建築」還沒有 citywide 排名資料，`structural_score` 因此一律是 `null`（見上方「後端端點」）；等這組資料到位後才有真正的綜合結構分數
+- `GET /api/observed`、`POST /api/reports` 後端還沒實作，前端目前分別固定回退到示範資料／本機佇列
