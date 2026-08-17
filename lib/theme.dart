@@ -35,6 +35,33 @@ class Palette {
   static const hit = Color(0xFF1B8A3A);
   static const miss = Color(0xFFD4416B);
 
+  // ---- 狀態列與資料來源面板（Figma: Data Status Strip / Structural Sources）
+  static const statusBg = Color(0xFAFFF7EF);
+  static const statusBorder = Color(0xFFEADCCF);
+  static const evidenceBadge = Color(0xFFBF3A2F);
+  static const metaLabel = Color(0xFF6F746F);
+  static const metaValue = Color(0xFF4E5953);
+  static const metaSep = Color(0xFF9B958D);
+  static const semanticsPill = Color(0xFFEEE8E1);
+  static const semanticsInk = Color(0xFF555F59);
+  static const helperInk = Color(0xFF747B76);
+  static const sourcePill = Color(0xFFE4EDE8);
+  static const sourceInk = Color(0xFF2C5545);
+
+  // ---- 通報抽屜（Figma: Government Demo Notice Drawer）
+  //
+  // Figma 這一組原本是綠色系（#126D50 / #12553F / #D2E9DE / #EEF7F2），
+  // 但主色已改成深藍，留著綠色會變成第二個強調色。這裡改用深藍衍生色。
+  static const noticeCard = Color(0xFFEDF2F7);
+  static const noticeType = brand;
+  static const inspectionPill = Color(0xFFD6E1EC);
+  static const inspectionInk = Color(0xFF0E3252);
+  static const demoDisclaimerBg = Color(0xFFFFF3DE);
+  static const demoDisclaimerInk = Color(0xFF745329);
+  static const closeBg = Color(0xFFF3F6F4);
+  static const headline = Color(0xFF1B2822);
+  static const bodyInk = Color(0xFF5E6C64);
+
   /// 觀測通報密度圖層的顏色。
   ///
   /// 用紫色是刻意的：預測範圍是橘色（色相約 25°），這個是約 265°，
