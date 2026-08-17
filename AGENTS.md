@@ -2,9 +2,9 @@
 
 ## 開始工作前
 
-- 先閱讀 `HARNESS_ARCHITECTURE.md`；它是產品、Evidence、Belief、Decision、Action、Feedback 與治理邊界的候選權威。
-- 涉及架構、Belief、Agent 權限、Ground Truth、公開／內部資料或跨模組決策時，使用 `[route:architecture]`。
-- 目前唯一宣告的 path route 僅涵蓋 `AGENTS.md` 與 `HARNESS_ARCHITECTURE.md`；新增程式或目錄後必須重新執行 `$coh:set-up` 更新 Model。
+- 先閱讀 `docs/BELIEF.md` 固定專案焦點，再閱讀 `docs/HARNESS_ARCHITECTURE.md` 了解 Evidence、Belief、Decision、Action、Feedback 與治理邊界。
+- 涉及產品方向或失焦判斷時使用 `[route:belief]`；涉及架構、Belief record、Agent 權限、Ground Truth、公開／內部資料或跨模組決策時使用 `[route:architecture]`。
+- 目前唯一宣告的 path route 僅涵蓋 `AGENTS.md`、`docs/BELIEF.md` 與 `docs/HARNESS_ARCHITECTURE.md`；新增程式或目錄後必須重新執行 `$coh:set-up` 更新 Model。
 
 ## 證據與行動邊界
 
@@ -16,4 +16,4 @@
 
 ## 維護觸發
 
-當 source layout、資料契約、Model card、Operations runbook、Sensor、CI、provider、deployment、Agent 權限或公開政策改變時，重新檢查 `HARNESS_ARCHITECTURE.md` 與 `.coh/model.json`。
+當 product belief、source layout、資料契約、Model card、Operations runbook、Sensor、CI、provider、deployment、Agent 權限或公開政策改變時，重新檢查 `docs/BELIEF.md`、`docs/HARNESS_ARCHITECTURE.md` 與 `.coh/model.json`。
