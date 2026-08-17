@@ -1,46 +1,51 @@
 # SubTerrat Harness 架構
 
-> Evidence–Belief–Decision–Action Loop for underground sewer rat-risk inspection
+> Evidence architecture for Taipei citizen-reported rat-hotspot prediction and later field validation
 
 ## 1. 文件定位
 
-本文件定義 SubTerrat 的候選產品架構與 Harness 邊界。系統目標不是宣稱「預測臺北所有鼠患」，而是協助城市維運單位根據地下管網、周邊環境與最新證據，排序有限巡檢資源，追蹤處理結果，並用現場回饋修正後續判斷。
+本文件定義 SubTerrat 的研究產品架構與 Harness 邊界。第一階段目標是：只使用餐飲／傳統市場密度、地下水道環境與廢棄建築，在 T0 產生臺北聚合區域的結構性風險排序，再以 T1 觀測窗內見鼠雷達審核通過的 `Rat` 通報檢查空間相符程度。此結果只回答「是否預測到民眾見鼠通報熱點」，不直接等於實際鼠群、地下鼠類存在或疾病風險。
+
+本輪只固定研究問題、Evidence contract、T0／T1 驗證與投藥邊界；空間網格大小、模型家族、雲端服務、資料庫與前端框架均延後決定。
 
 本文件同時扮演兩個角色：
 
-1. **產品／Agent 架構 Guide**：說明 Evidence、Belief、Decision、Action、Feedback 如何連成可稽核閉環。
-2. **未來 CoH Harness 的候選 authority**：提供 routes、Sensors、proof boundaries 與 maintenance triggers 的設計來源；目前尚未被 `.coh/model.json` 採用。
+1. **研究／產品架構 Guide**：說明 T0 Features、T1 outcome、Evidence、Belief、Decision、Action 與 Feedback 如何維持可稽核邊界。
+2. **CoH Harness authority**：提供 routes、Sensors、proof boundaries 與 maintenance triggers 的設計來源；目前已由 `.coh/model.json` 的 `architecture` route 引用，但仍無 repository-owned Sensor，evidence policy 為 `NO_TRUSTED_RESULT`。
 
 ### 目前證據狀態
 
 | 狀態 | 內容 |
 | --- | --- |
-| `OBSERVED` | `/Users/hjc/CodeSpace/SubTerrat` 在本文件建立前為空目錄，且不是 Git repository。 |
-| `OBSERVED` | ChatGPT Pro 討論將核心缺口歸納為證據鏈、決策鏈、責任鏈，並建議以人孔／管段的巡檢優先序作為主要輸出。 |
-| `OBSERVED` | 討論採用 Seattle 下水道管線特徵與鼠類存在研究作為科學假設來源，並強調臺北 Ground Truth 仍需自行取得。 |
-| `INFERRED` | SubTerrat 的 MVP 主要使用者是市府內部巡檢、管網維護與病媒防治人員。 |
-| `UNKNOWN` | 實際資料授權、欄位品質、目標時間窗、每日巡檢容量、正式權責單位與臺北在地標籤目前均未確認。 |
+| `OBSERVED` | 見鼠雷達提供 `通報時間、類型、地點、狀態、說明、照片網址、緯度、經度` 的 CSV 匯出，資料不限臺北；主要資料型別包含 `Rat` 與 `Poison`。 |
+| `OBSERVED` | 見鼠雷達公開說明採 AI 初篩與志工人工複審；`Approved` 是平台審核狀態，不是專業現場 Ground Truth。 |
+| `OBSERVED` | Seattle 研究使用 1,752 個 geotagged manholes 的鼠餌消耗／鼠跡 presence labels 與管線、地表、氣象資料；臺北目前僅把該研究作為地下水道特徵假設來源。 |
+| `OBSERVED` | 使用者已選定第一版三組輸入：餐飲區密度（含傳統市場）、地下水道環境、廢棄建築；目標為預測民眾見鼠通報熱點。 |
+| `OBSERVED` | 臺北市戶外環境噴藥日程表與抽查的大安區附件只描述戶外環境消毒、水溝與髒亂地區作業，未標示滅鼠餌劑或鼠類防治目的。 |
+| `UNKNOWN` | 三組輸入的正式來源、授權、歷史快照、欄位品質、空間解析度與更新頻率尚未確認。 |
+| `UNKNOWN` | 第一輪 T0 cutoff、T1 觀測窗、預測區域、聚合網格、成功門檻與通報機會偏差控制尚未鎖定。 |
 | `UNKNOWN` | 尚無程式、資料管線、部署環境、測試、CI 或 production evidence。 |
 
-CoH `set-up` 的本次唯讀 Need Gate 結果為 `INSUFFICIENT_EVIDENCE`：目標目錄沒有 Git HEAD，無法產生 task-bound BuildPlan。這不影響先建立候選架構文件，但不得把本文件描述成已完成的 CoH Harness Model。
+目前 `.coh/model.json` 已引用本文件、`docs/BELIEF.md` 與 `AGENTS.md`，construction status 為 `READY`；但 `sensors=[]` 且 route `sensor_id=null`。因此文件變更有 authority 路由，不代表任何資料、模型或預測已被驗證。
 
 ## 2. 中心命題與主張邊界
 
 ### 2.1 中心命題
 
-**臺北地下管網鼠類活動風險監測與巡檢決策系統**
+**臺北民眾見鼠通報熱點預測與後續現場驗證研究**
 
-候選 Agent 描述：
+第一階段研究描述：
 
-> Sewer Risk Agent 持續整合地下管網結構、環境先驗與動態證據，維護每個人孔／管段的可追溯 Belief，提出巡檢任務草稿，經人工核准後追蹤處理與復發。
+> SubTerrat 在不使用 T1 見鼠通報調整特徵或權重的條件下，以餐飲／市場密度、地下水道環境與廢棄建築產生 T0 結構性熱點排序；觀測窗結束後，再以見鼠雷達審核通過的臺北 `Rat` 通報評估預測相符程度、基線增益與偏差。
 
 ### 2.2 決策單位與輸出
 
-- 分析單位：人孔或管段。
-- 主要輸出：指定時間窗內的 Top-K 巡檢優先序。
-- 每筆建議至少包含：原因、證據等級、資料新鮮度、不確定度、下一步、負責單位與案件狀態。
-- MVP 決策介面：市府內部 Web 地圖＋案件工作臺。
-- 公開介面：只顯示聚合區域與治理狀態，不顯示精確管線、人孔、住宅或店家風險。
+- 分析單位：固定的臺北聚合空間單位；網格或街廓解析度須在實驗封存前決定。
+- T0 輸出：各聚合單位的可解釋結構性 score、排名、因素、資料新鮮度與限制。
+- T1 outcome：指定觀測窗內，落在臺北範圍、`類型=Rat`、`狀態=Approved` 的見鼠雷達通報。
+- 第一輪比較：T0 Top-K／高分區域捕捉到的 T1 通報比例，以及相對餐飲密度單一特徵、人口／通報機會與簡單空間 baseline 的 lift。
+- 公開輸出只顯示聚合區域，不顯示完整地下管網、人孔、精確住宅或店家風險。
+- 第一階段不產生派工、投藥或其他現場行動建議。
 
 ### 2.3 明確非目標
 
@@ -48,38 +53,47 @@ CoH `set-up` 的本次唯讀 Need Gate 結果為 `INSUFFICIENT_EVIDENCE`：目�
 
 - 預測個人感染漢他病毒或其他疾病。
 - 精確估算鼠群數量。
+- 把 `Approved` 見鼠通報稱為 E2／E3 現場確認、實際鼠群密度或鼠患 Ground Truth。
 - 判定特定店家或住宅「有鼠患」。
 - 把單一民眾通報當成 Ground Truth。
 - 未經人工核准直接建立 1999 對外案件。
 - 自動投藥、封堵、修繕或發布公共衛生警報。
+- 預測或建議滅鼠餌劑種類、劑量與投放點。
 - 把 Seattle 模型參數直接視為臺北已驗證模型。
 
 ## 3. 核心閉環
 
 ```mermaid
 flowchart LR
-    A["結構資料<br/>管線、人孔、地形、周邊環境"] --> E["Evidence Registry"]
-    B["動態訊號<br/>通報、天氣、施工、淹水"] --> E
-    C["現場觀測<br/>正例與負例"] --> E
-    E --> Q["Evidence Quality<br/>來源、等級、新鮮度、版本"]
-    Q --> L["Belief Engine<br/>結構適生性與近期活動信念"]
-    L --> R["Decision Policy<br/>Top-K + 探索性抽樣"]
-    R --> H{"Human Approval"}
-    H -->|核准| T["巡檢任務與案件工作流"]
-    H -->|退回| E
-    T --> O["Inspection / Intervention Outcome"]
-    O --> G["Ground Truth Store<br/>追加式、不可被模型覆寫"]
-    G --> E
-    O --> K["KPI、校準、復發評估"]
-    K --> M["Reviewed Model / Policy Update"]
-    M --> L
+    A["T0 餐飲／市場密度"] --> F["Frozen Feature Snapshot"]
+    B["T0 地下水道環境"] --> F
+    C["T0 廢棄建築"] --> F
+    F --> Q["Provenance / Time / Quality"]
+    Q --> M["Frozen Model or Scoring Rule"]
+    M --> P["T0 Aggregated Risk Map + Digest"]
+    P --> W["Wait for Locked T1 Window"]
+    W --> R["Rat Radar Approved Rat Reports"]
+    R --> V["Temporal / Spatial Evaluation"]
+    V --> K["Lift, Bias Checks, Limitations"]
+    K --> H{"Human Research Review"}
+    H -->|支持通報熱點假設| N["Design Prospective / Field Validation"]
+    H -->|無增益或偏差主導| X["Revise or Stop Claim"]
 ```
 
-閉環必須維持三項分離：
+第一輪必須維持四項分離：
 
-1. **Belief** 是根據目前證據形成、可被更新的推論。
-2. **Operational State** 是案件或巡檢正在進行到哪一步。
-3. **Ground Truth** 是經定義程序取得的觀測結果，不因模型分數改變。
+1. **Structural score** 是 T0 三組特徵形成的研究輸出，不是鼠類存在事實。
+2. **Reported-sighting outcome** 是 T1 見鼠雷達通報分布，不是實際鼠群 Ground Truth。
+3. **Treatment exposure** 是投藥、清疏、封堵或其他介入，不能與結構性風險或鼠類活動混為一談。
+4. **Ground Truth** 仍需由未來標準化現場巡檢、捕捉或檢驗取得，不因模型或通報狀態改變。
+
+### 3.1 T0／T1 封存規則
+
+- 在讀取 T1 outcome 前，封存研究問題、臺北邊界、分析單位、三組特徵定義、資料 cutoff、缺值處理、權重／模型、Top-K 規則、baselines、主要指標與停止條件。
+- T0 artifact 至少記錄 `generated_at`、資料版本、程式／規則版本、參數與可重算 digest。
+- 現有見鼠雷達已被團隊閱讀，只能作 retrospective check；它不能被稱為完全盲化 holdout。
+- 第一次 prospective evaluation 必須使用封存時間之後才發生的新通報，且不得在觀測窗中途調權。
+- Retrospective、prospective、field-verified 三層結果分開報告，不得互相升格。
 
 ## 4. Evidence 架構
 
@@ -87,18 +101,20 @@ flowchart LR
 
 | 類別 | 候選內容 | 角色 |
 | --- | --- | --- |
-| 結構性先驗 | 管線類型、管徑、深度、年代、材質、坡度、海拔、人孔、拓撲、鄰近食物來源 | 形成較慢變動的棲地／活動先驗 |
-| 動態訊號 | 民眾通報、照片、天氣、淹水、施工、清運、短期重複事件 | 更新近期活動 Belief，不直接等同標籤 |
+| T0 結構性先驗 | 餐飲業與傳統市場密度；管線類型、管徑、深度、年代、材質、坡度、海拔與拓撲；廢棄建築 | 形成第一版 feature-only 結構性 score |
+| T1 通報 outcome | 見鼠雷達臺北 `Rat + Approved` 通報的時間、位置、說明與可用照片 | 評估通報熱點相符程度；不直接等同實際鼠群標籤 |
+| 通報機會／偏差 | 人口、步行活動、土地使用、媒體事件、平台使用變化、資料覆蓋時間 | 檢查模型是否只預測較容易被看見或通報的位置 |
+| 疑似介入訊號 | 見鼠雷達 `Poison` 通報 | 低等級 treatment signal；不作主要 outcome 或鼠類活動標籤 |
+| 已確認介入 | 具來源、鼠類防治目的、位置、日期與措施類型的投藥、封堵、清疏或修繕 | 作 treatment exposure、分層與敏感度分析 |
 | 現場觀測 | 非毒性餌塊消耗、鼠糞、鼠洞、咬痕、捕捉、專業巡檢 | 建立正例與負例 Ground Truth |
-| 介入結果 | 清潔、封堵、捕鼠、投藥、管線修繕、兩週／四週復查 | 評估治理效果與復發 |
-| 治理資料 | 任務建立、核准、轉派、逾期、結案與重新開案 | 描述責任與處理狀態，不應回灌成獨立生物證據 |
+| 排除資料 | 未說明藥劑與鼠類防治目的的戶外環境噴藥日程 | 不得推定為滅鼠餌劑或已處理鼠患 |
 
 ### 4.2 候選證據等級
 
 | 等級 | 定義 | 可支持的主張 |
 | --- | --- | --- |
-| `E0` | 單一、尚未驗證的民眾通報 | 存在需要查核的訊號 |
-| `E1` | 具照片／影片、多人獨立重複通報或其他交叉訊號 | 活動疑似程度提高，仍非現場確認 |
+| `E0` | 無可用照片／影片或獨立交叉訊號的單一民眾見鼠通報；平台狀態可另記 | 存在需要查核的訊號；即使 `Approved` 也不是專業現場確認 |
+| `E1` | 具可用照片／影片、多人獨立重複通報或其他交叉訊號 | 活動疑似程度提高，仍非現場確認 |
 | `E2` | 專業人員現場確認鼠跡，或依固定程序確認無鼠跡 | 在指定時間與位置的現場觀測 |
 | `E3` | 捕捉、實體樣本或實驗室檢驗 | 指定樣本的直接證據；不自動外推為區域疾病風險 |
 
@@ -114,172 +130,192 @@ flowchart LR
 - 隱私與公開層級
 - 是否可作為訓練標籤
 
-### 4.3 防止自我強化
+### 4.3 見鼠雷達 outcome contract
+
+第一階段主要 outcome 必須同時符合：
+
+- 空間上落在鎖定的臺北研究邊界內，不只依行政區文字判斷。
+- `類型=Rat`；`Poison` 分流為疑似介入訊號。
+- `狀態=Approved`；`Pending` 不進主要 outcome。
+- `通報時間` 落在鎖定的 T1 觀測窗。
+- 保存原始 CSV、擷取時間、來源 URL、內容雜湊與欄位版本。
+- 聚合後才進入評估；不得在輸出重新暴露精確住宅、照片中的身分資訊或其他不必要細節。
+
+見鼠雷達的 AI＋人工審核可降低部分明顯錯誤與惡意通報，但不能消除未通報區、重複事件、人口與能見度差異，也不能把「沒有通報」解讀成「沒有老鼠」。因此第一階段不使用 accuracy、specificity 或 calibrated probability 等需要可信負標籤的主張。
+
+### 4.4 防止自我強化與 leakage
 
 - 系統產生的任務一律標記 `source=system`。
 - 系統任務、模型分數與案件狀態不得作為新的獨立活動證據。
 - 1999 或其他民眾通報若是由系統觸發，不得回灌成民眾證據。
 - 相同事件的重複資料需做 entity resolution，避免多算。
-- 訓練資料必須記錄「未發現鼠跡」的負樣本。
-- 上線後的巡檢配置應保留探索樣本，例如 80% Top-K、20% 隨機或分層抽樣；比例須依資源與研究設計確認。
+- 若進入 E2／E3 field validation，訓練資料必須記錄「未發現鼠跡」的負樣本。
+- 若進入現場巡檢，配置應保留探索樣本，例如 80% Top-K、20% 隨機或分層抽樣；比例須依資源與研究設計確認。
+- T1 見鼠通報及由其衍生的密度、距離或熱區不得進入 T0 feature-only baseline。
+- 若日後以較早通報訓練 supervised model，必須另立版本，使用嚴格時間向前 holdout，不得與第一輪文獻先驗實驗混稱。
 
 ## 5. Belief 架構
 
 ### 5.1 Belief 定義
 
-Belief 是 Agent 在特定模型版本、時間與證據集合下，對不可直接完整觀察狀態的估計。它不是事實，也不是案件狀態。
+第一階段 Belief 是特定 T0 資料版本與 scoring rule 下，對聚合空間單位形成的結構性通報熱點 score。它不是事實、案件狀態、鼠群密度或機率。
 
-每個人孔／管段至少維護兩種可分離 Belief：
+每個聚合空間單位維護兩項分離紀錄：
 
-1. **Structural Suitability Belief**：此位置是否具備較高的長期棲地／活動條件。
-2. **Recent Activity Belief**：指定時間窗內是否可能存在近期鼠類活動。
+1. **Structural Report-Hotspot Belief**：三組 T0 特徵是否形成較高的見鼠通報先驗。
+2. **Observed Report Outcome**：T1 觀測窗結束後，該單位實際聚合到的合格見鼠雷達通報；它是 evaluation outcome，不回寫成 T0 特徵。
 
-`Inspection Priority` 是根據 Belief、資源限制、公共安全規則與探索策略形成的決策，不應被存成第三種「真相 Belief」。
+第一階段只比較 score 排名與 T1 通報分布，不產生 `Inspection Priority`、投藥或派工決策。
 
 ### 5.2 候選 Belief record
 
 ```json
 {
-  "belief_id": "belief:<asset_id>:<as_of>:<model_version>",
-  "asset_id": "manhole-or-segment-id",
-  "as_of": "RFC3339 timestamp",
+  "belief_id": "belief:<cell_id>:<t0_cutoff>:<model_version>",
+  "cell_id": "locked-aggregate-cell-id",
+  "t0_cutoff": "RFC3339 timestamp",
+  "t1_window": {
+    "start": "RFC3339 timestamp",
+    "end": "RFC3339 timestamp"
+  },
   "model_version": "candidate-model-version",
-  "structural_suitability": {
+  "structural_report_hotspot": {
     "score": 0.0,
     "calibrated_probability": null
   },
-  "recent_activity": {
-    "score": 0.0,
-    "calibrated_probability": null,
-    "time_window": "UNKNOWN"
-  },
+  "feature_groups": ["food_market_density", "sewer_environment", "abandoned_buildings"],
+  "feature_snapshot_refs": [],
+  "model_digest": "sha256:...",
   "uncertainty": {
     "method": "UNKNOWN",
     "value": null
   },
   "evidence_refs": [],
-  "evidence_level_max": "E0",
   "freshness": "current|stale|unknown",
   "explanation_factors": [],
   "limitations": [],
+  "status": "t0_frozen|t1_observing|evaluated",
   "supersedes": null
 }
 ```
 
 在尚未取得臺北 E2／E3 標籤並完成校準前：
 
-- `score` 只能稱為文獻先驗風險篩選分數。
+- `score` 只能稱為結構性見鼠通報熱點篩選分數。
 - `calibrated_probability` 必須為 `null`。
-- 不得以「鼠患機率 85%」等語句呈現。
+- 不得以「鼠患機率 85%」或「此處確定有鼠」等語句呈現。
 - Belief 更新應保留先前版本，不可就地覆寫而失去 provenance。
 
 ### 5.3 Belief 更新規則
 
-概念上：
+第一輪概念上：
 
 ```text
-Belief_t = Update(Belief_t-1, NewEvidence_t, EvidenceQuality, ModelVersion)
-Decision_t = Policy(Belief_t, Capacity, Cost, ExplorationQuota, SafetyRules)
+T0Score = FrozenRule(FoodMarketSnapshot, SewerSnapshot, AbandonedBuildingSnapshot)
+T1Outcome = Aggregate(FutureApprovedRatReports, LockedBoundary, LockedWindow)
+Evaluation = Compare(T0Score, T1Outcome, Baselines, BiasChecks)
 ```
 
 候選規則：
 
-- 結構特徵形成 prior；動態訊號更新近期活動估計。
-- 證據有時間衰減，但 E2／E3 歷史觀測仍保留為訓練與復發資料。
+- 三組結構特徵形成 T0 prior；T1 通報只用於評估，不在觀測窗中途更新 score。
+- 現有通報可用於資料品質探索與 retrospective check，但若已影響規則或權重，必須標記 `development-exposed`。
 - 缺資料應增加 uncertainty，不可自動解讀成低風險。
 - 互相衝突的證據保留為 `CONFLICTING`，不得任選一方覆蓋。
 - 模型版本更換時重算新 Belief record，並保留舊版以供比較。
-- 人工可以否決行動，但不能無痕修改模型輸出或 Ground Truth。
+- T0 封存後不得無痕修改特徵、權重、網格、Top-K 或主要指標。
+- 人工可以裁決研究是否繼續，但不能無痕修改模型輸出或 outcome。
 - LLM 可協助生成可讀解釋，不得創造 Evidence、調高等級或替代決策規則。
 
-## 6. Agent 與案件狀態
+## 6. 研究流程與權限
 
-MVP 使用一個具持續狀態的 Sewer Risk Agent；模型、排序器、案件處理與公共衛生 guardrail 先作為模組，不為了展示 A2A 而拆成多個假 Agent。
+第一階段是一次可稽核的預測實驗，不以展示 Agent、A2A 或自動化案件流程為目的。任何持續 Agent 或派工工作臺均延後到 prospective 與現場驗證之後再決定。
 
-### 6.1 Agent 權限
+### 6.1 第一階段可執行與禁止事項
 
 可執行：
 
-- 整合已授權資料並更新 Belief。
-- 產生巡檢任務草稿與理由。
-- 要求補充證據。
-- 追蹤已核准任務、逾期與復查。
-- 產生內部通知或跨局處轉派建議。
+- 整合已授權的三組 T0 資料並產生聚合 score。
+- 封存資料版本、規則／模型、參數、地圖與 digest。
+- 在 T1 關窗後擷取、保存及聚合見鼠雷達 outcome。
+- 執行 baselines、ablation、偏差檢查與不確定性報告。
+- 產生研究報告與是否進入下一階段的草稿建議。
 
 需人工核准：
 
-- 正式派工或跨局處轉派。
-- 對外建立案件或通知民眾。
-- 公共衛生升級。
-- 現場介入措施。
-- 對外公開風險資訊。
+- T0 protocol lock 與任何重新封存。
+- 成功／失敗判定及是否進入 prospective 或 E2／E3 field validation。
+- 對外發布聚合風險地圖與研究主張。
+- 任何巡檢、派工、投藥、封堵、修繕或公共衛生升級。
 
 禁止：
 
 - 自動診斷疾病。
+- 把通報熱點 score 稱為鼠患 probability、鼠群密度或現場確認。
+- 用 T1 outcome 事後調整 T0 實驗，再把結果稱為原模型預測。
 - 自動將模型輸出升級為 Ground Truth。
 - 未核准即對外通報或指認店家／住宅。
+- 自動建議滅鼠藥種類、劑量或投放位置。
 - 自動改寫模型 policy、Guide 或 Sensor。
 
-### 6.2 Operational state machine
+### 6.2 Experiment state machine
 
 ```mermaid
 stateDiagram-v2
-    [*] --> StructuralHighRisk
-    StructuralHighRisk --> SuspectedActivity: 動態訊號達查核條件
-    SuspectedActivity --> AwaitingVerification: 建立任務草稿
-    AwaitingVerification --> StructuralHighRisk: 人工退回或證據不足
-    AwaitingVerification --> Confirmed: 現場確認
-    AwaitingVerification --> NotObserved: 現場未發現鼠跡
-    Confirmed --> AwaitingIntervention: 核准處理
-    AwaitingIntervention --> Monitoring: 介入完成
-    NotObserved --> Monitoring: 保留負樣本與復查條件
-    Monitoring --> Closed: 觀測窗內無復發
-    Monitoring --> SuspectedActivity: 新證據或復發
-    Closed --> SuspectedActivity: 新事件重新開案
+    [*] --> Draft
+    Draft --> ProtocolLocked: 人工核准研究契約
+    ProtocolLocked --> T0Frozen: 特徵、規則、地圖與 digest 封存
+    T0Frozen --> T1Observing: 未來觀測窗開始
+    T1Observing --> OutcomeFrozen: 觀測窗結束並封存 CSV
+    OutcomeFrozen --> Evaluated: baselines、ablation、偏差檢查完成
+    Evaluated --> Reviewed: 人工審查主張與限制
+    Reviewed --> Closed: 無增益或不繼續
+    Reviewed --> FieldValidationPlanned: 支持 prospective／E2-E3 驗證
 ```
 
-狀態轉移必須記錄 actor、時間、前置證據、核准者與 reason code。
+狀態轉移必須記錄 actor、時間、資料與模型 digest、前置證據、核准者與 reason code。
 
 ## 7. 模型與驗證
 
 ### 7.1 候選模型階段
 
-1. **Literature baseline**：以 Seattle 研究支持的管線物理特徵建立可解釋篩選分數。
-2. **Local supervised baseline**：取得臺北 E2 正負樣本後，建立 GAM／Logistic 等可校準 baseline。
-3. **Graph extensions**：加入 degree、betweenness、dead-end、network distance、鄰近管段風險等特徵。
-4. **Dynamic evidence**：加入通報、天氣、施工、淹水與近期巡檢。
-5. **Ablation**：逐層確認每一組特徵是否在時空外推情境下增加價值。
+1. **T0 feature-only baseline**：只使用餐飲／市場密度、Seattle 研究支持的地下水道環境假設與廢棄建築，建立可解釋 score；不以 T1 見鼠通報調權。
+2. **Retrospective check**：用已存在、且團隊已看過的見鼠雷達資料檢查資料契約、偏差與初步空間相符；結果標記 `development-exposed`，不宣稱盲測。
+3. **Prospective report holdout**：封存 T0 後，對未來新通報執行時間向前評估，不在觀測窗中途改模。
+4. **Ablation and baselines**：分別檢查餐飲／市場、地下水道、廢棄建築的增益，並與人口／通報機會、單一土地使用及簡單空間 baseline 比較。
+5. **Field-validation gate**：只有 prospective report-hotspot 結果有增益，才設計 E2／E3 現場正負樣本；通過前不建立 calibrated rat-presence model。
 
-Centrality 只能是待驗證特徵，不能被當成核心答案。管網需保留方向、長度、坡度、缺漏與可能的雙向鼠類移動假設。
+模型家族、graph centrality、網格大小與技術框架本輪不決定。若未來納入 network features，centrality 只能是待驗證特徵；管網仍需保留方向、長度、坡度、缺漏與可能的雙向鼠類移動假設。
 
 ### 7.2 評估設計
 
 - 時間向前切分，防止 future leakage。
 - Spatial block split，避免鄰近位置洩漏。
 - 留一行政區測試，觀察地理外推能力。
-- Precision@K、Recall@K、PR-AUC。
-- 若輸出 probability，必須檢查 calibration。
-- 相同巡檢人力下，每 100 次巡檢確認鼠跡的件數。
-- 提前發現時間、任務完成時間、復發率與介入成效。
-- Top-K exploitation 與 exploration 樣本分開報告。
+- Primary：`Report Capture@K`，即 T0 Top-K／高分聚合區域在 T1 捕捉到的合格通報比例。
+- Primary comparator：相對預先鎖定簡單 baselines 的 lift；不得只和隨機結果比較。
+- Ablation：餐飲／市場、地下水道、廢棄建築各自與組合模型的增量價值。
+- Bias checks：人口、步行／活動強度、行政區、媒體／平台成長與通報機會敏感度。
+- 投藥敏感度：只有取得可信的鼠類防治 exposure 後，才比較介入前後或分層結果；不得用疑似投藥通報推定實際處置。
+- 第一階段沒有可信負標籤，不報 accuracy、specificity、PR-AUC 或 calibrated probability。
+- 所有 retrospective、prospective 與未來 E2／E3 field results 分層報告。
 
-不能只報整體 accuracy，也不能以離線指標替代實際城市營運成效。
+通報熱點相符不能替代實際鼠類活動或城市營運成效。即使第一階段成功，主張上限仍是「三組 T0 特徵對未來見鼠雷達通報分布具有時間向前的排序增益」。
 
 ## 8. 資料、介面與治理邊界
 
 ### 8.1 三個視圖
 
-- **結構性風險層**：管線年代、管徑、深度、材質、類型、拓撲、周邊食物來源。
-- **動態活動證據層**：通報、巡檢、鼠跡、捕捉、天氣、施工與淹水。
-- **治理狀態層**：尚未驗證、已排定、已確認、處理中、監測中、已結案。
+- **T0 結構性 score 層**：餐飲／市場密度、地下水道環境、廢棄建築及其資料新鮮度。
+- **T1 通報 outcome 層**：聚合後的見鼠雷達 `Rat + Approved` 通報；與 `Pending`、`Poison` 分開。
+- **介入與偏差層**：可信投藥／封堵／清疏紀錄、疑似投藥訊號、人口與通報機會等敏感度資訊。
 
 ### 8.2 內外部分離
 
 | 介面 | 可見內容 |
 | --- | --- |
-| 內部工作臺 | 精確人孔／管段、Evidence、Belief、任務、負責單位與稽核紀錄 |
-| 公開地圖 | 聚合網格／街廓、資料更新時間、已驗證狀態與治理進度 |
+| 內部研究工作臺 | 原始來源 refs、聚合前暫存資料、T0／T1 cutoff、score、baselines、偏差檢查與稽核紀錄 |
+| 公開研究地圖 | 聚合網格／街廓、score 分級、資料更新時間、研究限制；不稱實際鼠患機率 |
 
 ### 8.3 敏感資料
 
@@ -296,17 +332,17 @@ Centrality 只能是待驗證特徵，不能被當成核心答案。管網需保
 
 | Guide | 目的 | 建議擁有者 |
 | --- | --- | --- |
-| 本文件 | 產品、Belief、Agent 與證據邊界 | Product／Architecture owner |
-| Data contract | Evidence、Ground Truth、空間欄位與版本 | Data owner |
-| Model card | 目標、資料、切分、校準、限制 | Model owner |
-| Operations runbook | 核准、派工、處理、復查、回滾 | Operations owner |
+| 本文件 | 研究目標、Belief、outcome、投藥與證據邊界 | Product／Architecture owner |
+| Experiment protocol | T0／T1 cutoff、網格、baselines、指標、停止條件與封存程序 | Research owner |
+| Data contract | 三組 T0 特徵、見鼠雷達 outcome、偏差與介入欄位 | Data owner |
+| Model card | 目標、資料、切分、ablation、限制與 development exposure | Model owner |
 | Public disclosure policy | 內外部圖層與風險溝通 | Governance owner |
 
 ### 9.2 Proposed CoH routes
 
 | Route ID | 路由範圍 | Authority |
 | --- | --- | --- |
-| `architecture` | Agent、Belief、決策與跨模組變更 | 本文件 |
+| `architecture` | 研究目標、Belief、決策、權限與跨模組變更 | 本文件 |
 | `data` | ingestion、schema、quality、privacy | 未來 Data contract |
 | `model` | features、training、evaluation、calibration | 未來 Model card |
 | `operations` | case、inspection、intervention、audit | 未來 Operations runbook |
@@ -320,12 +356,13 @@ CoH runtime 只應使用 exact `[route:<id>]` 或宣告的 path prefix；不得�
 | --- | --- | --- | --- | --- |
 | Evidence schema validator | hard gate | `static` | 必填 provenance、時間、等級與隱私欄位存在 | 資料真實或正確 |
 | Belief provenance validator | hard gate | `static` | Belief 引用存在的 Evidence 與 model version | 分數校準或決策有效 |
-| System-feedback exclusion test | hard gate | `static`／`runtime` | `source=system` 不會被當成獨立民眾證據 | 所有偏差已消除 |
-| Spatial／temporal leakage tests | hard gate | `runtime` | 指定資料切分沒有已知洩漏路徑 | production 泛化能力 |
-| Calibration report | report-only，成熟後可 ratchet | `runtime` | 指定資料與版本的校準觀測 | 未見區域或未來長期表現 |
-| Top-K vs exploration KPI | report-only | `runtime`／`human-review` | 指定期間的巡檢命中與盲區觀測 | 因果改善，除非研究設計支持 |
+| Rat Radar outcome contract | hard gate | `static`／`runtime` | 只納入鎖定邊界、時間、`Rat + Approved`，並分流 `Pending`／`Poison` | 通報為 E2／E3 或沒有 selection bias |
+| T0 artifact digest | hard gate | `runtime` | 特徵快照、規則／模型、地圖與指標在 T1 前已封存且未變 | 預測具有外部效度 |
+| Spatial／temporal leakage tests | hard gate | `runtime` | T1 通報及其衍生欄位未進入 T0，指定切分沒有已知洩漏 | 未知的人為調參或所有偏差已消除 |
+| Intervention-purpose validator | hard gate | `static` | 只有具鼠類防治目的、位置與時間的措施可列 treatment exposure | 投藥有效或因果效果成立 |
+| Report-hotspot evaluation | report-only | `runtime`／`human-review` | 指定 T1 視窗的 Capture@K、baseline lift、ablation 與偏差檢查 | 實際鼠群存在、鼠患機率或治理成效 |
 | Internal/public layer policy test | hard gate | `static`／`browser` | 指定欄位未出現在公開 build／journey | 所有角色、部署與旁路皆安全 |
-| Workflow state transition test | hard gate | `runtime` | 非法轉移與缺核准紀錄會被拒絕 | 現場處理品質 |
+| Experiment state transition test | hard gate | `runtime` | 缺少 protocol lock、digest 或人工 review 時不能宣告完成 | 研究問題本身正確 |
 
 ### 9.4 Feedforward 與 feedback
 
@@ -333,15 +370,15 @@ Feedforward：
 
 - 進入模組前路由到最小 authority。
 - 明確非目標與人機權限邊界。
-- Evidence、Belief、Decision、Ground Truth 的資料契約。
+- T0 Features、T1 outcome、treatment exposure 與 Ground Truth 的資料契約。
 - 公開／內部資料分級。
 
 Feedback：
 
-- 現場正負樣本回流。
+- Retrospective 與 prospective outcome 分層回流。
 - Sensor receipts 與 CI 結果。
-- Top-K／exploration 成效與 calibration。
-- 介入後復發與失敗案例 review。
+- Capture@K、baseline lift、ablation 與 bias checks。
+- 取得 E2／E3 後的 field validation 與失敗案例 review。
 - 只有經人工 review 的重複失敗，才提議更新 Guide、測試或 ratchet。
 
 ## 10. Proof boundaries
@@ -349,59 +386,65 @@ Feedback：
 | 層級 | 本專案候選證據 | 主張上限 |
 | --- | --- | --- |
 | `static` | schema、route、欄位、policy 與 source exclusion 檢查 | 檔案／結構符合宣告 |
-| `runtime` | ETL、模型、狀態機、leakage 與 KPI 測試 | 指定環境、資料、版本的執行結果 |
+| `runtime` | ETL、T0 freeze、T1 aggregation、leakage 與 report-hotspot KPI | 指定環境、資料、版本與觀測窗的執行結果 |
 | `browser` | 內部工作臺／公開地圖的指定角色 journey | 被測 build 與角色的 UI 行為 |
-| `live-provider` | 真實地圖、BigQuery、Vertex 或派工整合 | 指定帳號、操作與時間的 provider 行為 |
-| `production` | 已部署版本的 canary 與巡檢閉環 | 指定版本與時間窗的 narrow live evidence |
+| `live-provider` | 見鼠雷達 CSV、臺北資料來源或其他真實 provider | 指定 URL、擷取時間與內容版本的 provider 行為 |
+| `production` | 未來部署版本的 canary；第一階段無 production evidence | 指定版本與時間窗的 narrow live evidence |
 | `human-review` | 公衛、維運、隱私與產品評審 | 語意與風險判斷，不取代 deterministic tests |
 
 文件、模型 metadata 或助手文字都不是 validation receipt。任何「有效」「可用」「已改善」的主張必須指向相同 layer 的直接證據。
 
-## 11. MVP 實作順序
+## 11. 研究與產品階段
 
-### Phase 0 — Authority 與 Ground Truth 設計
+### Phase 0 — Research contract 與資料可行性
 
-- 確認正式使用者、決策、時間窗、每日容量與權責單位。
-- 取得資料清單、授權、欄位、座標系統與品質樣本。
-- 定義現場巡檢 protocol、正負樣本與 Evidence schema。
-- 初始化 Git repository 後，重新執行 `$coh:set-up`。
+- 確認臺北研究邊界、聚合單位、T0 cutoff、T1 觀測窗、Top-K、baselines、主要指標與停止條件。
+- 取得餐飲／市場、地下水道、廢棄建築的來源、授權、歷史快照、座標系統與品質樣本。
+- 確認見鼠雷達 CSV 的使用條件、保存方式、欄位版本與更新行為。
+- 定義 treatment exposure、疑似 `Poison` 訊號、通報機會偏差與排除規則。
 
-### Phase 1 — 可解釋風險篩選
+### Phase 1 — T0 封存與 retrospective check
 
-- 建立文獻先驗 baseline。
+- 建立只含三組特徵的文獻先驗 baseline。
 - 顯示 score、因素、資料新鮮度與限制，不稱為 probability。
-- 產生 Top-K 與探索性巡檢清單草稿。
+- 封存特徵、規則／模型、地圖、baselines、指標與 digest。
+- 用已被團隊看過的現有通報執行 `development-exposed` retrospective check，不宣稱盲測。
 
-### Phase 2 — 案件工作臺與回饋閉環
+### Phase 2 — Prospective report holdout
 
-- 實作人工核准、派工、現場回報、介入、復查與稽核。
-- 收集 E2 正負樣本。
-- 隔離 system-generated events，防止 feedback contamination。
+- 在封存後開啟新的 T1 觀測窗，中途不得改模。
+- 關窗後保存見鼠雷達 CSV 與 digest，只聚合 `Taipei + Rat + Approved`。
+- 執行 Capture@K、baseline lift、ablation、bias checks 與可信投藥 exposure 敏感度分析。
 
-### Phase 3 — 臺北在地模型
+### Phase 3 — E2／E3 field-validation gate
 
-- 建立 supervised baseline、時空切分與 calibration。
-- 驗證 graph features 與 dynamic evidence 的增益。
-- 以營運 KPI 比較 baseline、Top-K 與 exploration。
+- 若 prospective 通報熱點結果有增益，才定義標準化現場正負樣本與巡檢 protocol。
+- 以 Top-K、簡單 baseline 與探索樣本比較 verified yield。
+- 只有在地 E2／E3 標籤與 calibration 通過後，才討論 rat-presence probability。
 
-### Phase 4 — 公開資訊與真實整合
+### Phase 4 — 決策產品與真實整合
 
-- 完成內外部資料分層與 browser journey。
-- 逐一驗證 live provider 與 production proof。
-- 在有明確權責、獨立狀態與訊息契約後，才評估 A2A。
+- 再決定是否建立巡檢工作臺、Agent、派工或 provider 整合。
+- 投藥、封堵、修繕與公共衛生行動持續需要人類及權責單位核准。
+- 在有明確權責、獨立狀態與訊息契約後，才評估 A2A 或其他技術框架。
 
 ## 12. 必須先回答的決策
 
-1. 目標是預測「近期地下鼠類活動」、排序「巡檢效益」，還是兩者皆有？
-2. 預測與復查的時間窗分別是多久？
-3. 每日／每週 Top-K 的實際容量與成本是多少？
-4. 臺北 E2 正負 Ground Truth 從何取得，由誰負責？
-5. 哪個單位可以核准派工、介入與公共衛生升級？
-6. 精確管網資料的權限與公開限制是什麼？
-7. MVP 是純研究展示、模擬城市工作流，還是真實市府試辦？
-8. 什麼 KPI 與門檻才足以把 report-only 訊號提升為 ratchet 或 hard gate？
+已決定：第一階段預測「未來見鼠雷達審核通過的臺北 `Rat` 通報熱點」；T0 只使用餐飲／傳統市場密度、地下水道環境與廢棄建築；現有地圖只作 retrospective check；投藥只作可信 treatment exposure，不作標籤或自動行動。
 
-在這些問題未回答前，架構可以支持原型與研究設計，但不能支持「臺北鼠患預測系統已驗證」或「Agent 已可自動派工」的主張。
+實作前仍須回答：
+
+1. 臺北研究邊界、聚合網格／街廓與 Top-K 面積是多少？
+2. T0 cutoff 與第一個 prospective T1 觀測窗多長？
+3. 三組特徵各自採哪個 authority source、歷史版本、定義與缺值規則？
+4. 見鼠雷達資料的授權、版本保存與刪改紀錄契約為何？
+5. 人口、步行活動、平台成長與媒體注意等通報機會偏差如何控制？
+6. 成功門檻與 baselines 為何，什麼結果會停止或改寫題目？
+7. 是否能取得真正鼠類防治的投藥／封堵／清疏點位、日期與措施類型？
+8. 若通報熱點實驗成功，E2／E3 field validation 由誰執行與核准？
+9. 研究展示、真實市府試辦與技術框架的選擇均留待上述契約完成後決定。
+
+在這些問題未回答前，架構只支持研究契約與原型；即使 prospective 通報熱點相符，也不能支持「臺北實際鼠患預測系統已驗證」、投藥建議或「Agent 已可自動派工」的主張。
 
 ## 13. Maintenance triggers
 
@@ -409,6 +452,7 @@ Feedback：
 
 - 目標、時間窗、分析單位或正式使用者改變。
 - 新增 Evidence 類別、標籤來源或公開資料欄位。
+- T0／T1 cutoff、見鼠雷達 outcome contract、baselines 或成功門檻改變。
 - 模型版本、決策 policy、探索比例或校準方法改變。
 - Agent 權限、人工核准點或狀態機改變。
 - 新增真實 provider、production deployment 或跨局處整合。
@@ -421,5 +465,9 @@ Feedback：
 
 - ChatGPT Pro 對 SubTerrat／DevJam 心智圖的架構評審，讀取日期：2026-08-17。
 - [Characteristics of the urban sewer system and rat presence in Seattle](https://www.researchgate.net/publication/361570415_Characteristics_of_the_urban_sewer_system_and_rat_presence_in_Seattle)：科學假設來源，不是臺北在地有效性的證明。
+- [Seattle 研究公開資料與方法](https://datadryad.org/dataset/doi:10.5061/dryad.mw6m90603)：1,752 個 geotagged manholes 的 presence labels、管線、人孔、地表與氣象資料說明。
+- [見鼠雷達通報清單](https://ratdar.taipei/reports)：第一階段 T1 outcome 候選來源，包含 CSV 匯出；資料會持續更新且不限臺北。
+- [見鼠雷達審核透明度報告](https://ratdar.taipei/transparency)：AI 初篩、人工複審、退件原因與更新時間說明；平台審核不等於 E2／E3。
+- [臺北市戶外環境噴藥日程表](https://www.dep.gov.taipei/News_Content.aspx?n=C9DDE466083DD04F&sms=0643EAEB0A6AB30F&s=1136ABBCE065A121)：一般戶外環境消毒日程；未提供滅鼠餌劑用途證據，故不列鼠類投藥資料。
+- [環境部鼠害防治投放與綜合管理原則](https://enews.moenv.gov.tw/moenv-news/zh-tw/News/13612)：投藥僅為輔助，須定點投放、記錄地點與數量、收回未食餌並防止非目標風險。
 - CoH `0.3.0-alpha.3` bundled Harness concepts、control selection 與 proof-boundary contracts。
-
