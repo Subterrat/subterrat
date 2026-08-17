@@ -8,8 +8,12 @@ import 'models.dart';
 
 /// 資料來源。
 ///
-/// 一律走 C 的 Cloud Run API，前端不直接連 BigQuery
-/// （金鑰會被拆出來，而且改欄位時兩邊都要動）。
+/// 一律走 `services/hotspot_api`（FastAPI，讀同一個 GCP project 下的
+/// BigQuery），前端不直接連 BigQuery（金鑰會被拆出來，而且改欄位時
+/// 兩邊都要動）。實際契約見 docs/API_CONTRACT.md：目前只有
+/// `/api/v1/map/bootstrap`、`/api/v1/releases/current`、
+/// `/api/v1/releases/{release_id}/cells` 這三個讀端點是真的有實作，
+/// `observed`／`reports`（民眾通報送出）在後端完全不存在對應端點。
 ///
 /// [baseUrl] 留空時會自動改用本機產生的示範格子，
 /// 這樣後端還沒好之前你也能先把整個介面做完。
@@ -20,36 +24,98 @@ class RiskApi {
 
   bool get isMock => baseUrl.isEmpty;
 
+  Map<String, dynamic>? _bootstrap;
+
+  /// `/api/v1/map/bootstrap` 一次給目前 release id 與臺北市 bbox，
+  /// cells 查詢與 provenance 都要用，快取起來避免重複打。
+  Future<Map<String, dynamic>> _fetchBootstrap() async {
+    final cached = _bootstrap;
+    if (cached != null) return cached;
+    final res = await http
+        .get(Uri.parse('$baseUrl/api/v1/map/bootstrap'))
+        .timeout(const Duration(seconds: 8));
+    if (res.statusCode != 200) {
+      throw Exception('地圖初始化資料讀取失敗：HTTP ${res.statusCode}');
+    }
+    final body = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+    _bootstrap = body;
+    return body;
+  }
+
+  String _taipeiBboxFrom(Map<String, dynamic> bootstrap) {
+    final b = bootstrap['taipei_bounds'] as Map<String, dynamic>;
+    return '${b['west']},${b['south']},${b['east']},${b['north']}';
+  }
+
   /// [topN] 只取分數最高的前 N 格。整個臺北市切完約有九百多格，
   /// 全部畫上去地圖會掉幀，而且熱點圖本來就只需要顯示熱的地方。
+  ///
+  /// `structural_score` 目前一律是 null（見 [RiskCell.structuralScore]），
+  /// 排序改用 [RiskCell.rankScore]，不是造假湊一個總分。
   Future<List<RiskCell>> fetchCells({int topN = 380}) async {
     if (isMock) return _mockCells(topN);
 
-    final uri = Uri.parse('$baseUrl/api/risk?top=$topN');
-    final res = await http.get(uri).timeout(const Duration(seconds: 12));
-    if (res.statusCode != 200) {
-      throw Exception('風險資料讀取失敗：HTTP ${res.statusCode}');
-    }
-    final body = jsonDecode(utf8.decode(res.bodyBytes));
-    final list = (body is Map ? body['cells'] : body) as List;
-    return list
-        .map((e) => RiskCell.fromJson(e as Map<String, dynamic>))
-        .toList();
+    final bootstrap = await _fetchBootstrap();
+    final releaseId = bootstrap['current_release_id'] as String;
+    final bbox = _taipeiBboxFrom(bootstrap);
+
+    final cells = <RiskCell>[];
+    String? pageToken;
+    do {
+      final uri = Uri.parse('$baseUrl/api/v1/releases/$releaseId/cells')
+          .replace(queryParameters: {
+        'bbox': bbox,
+        'limit': '1500',
+        'page_token': ?pageToken,
+      });
+      final res = await http.get(uri).timeout(const Duration(seconds: 12));
+      if (res.statusCode != 200) {
+        throw Exception('風險資料讀取失敗：HTTP ${res.statusCode}');
+      }
+      final body = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+      final features = (body['features'] as List).cast<Map<String, dynamic>>();
+      cells.addAll(features.map(RiskCell.fromGeoJsonFeature));
+      pageToken = body['next_page_token'] as String?;
+    } while (pageToken != null && cells.length < topN);
+
+    cells.sort((a, b) => b.rankScore.compareTo(a.rankScore));
+    return cells.take(topN).toList();
   }
 
   /// 讀取版本與封存資訊。
   ///
-  /// 後端還沒提供時回傳「尚未封存」，畫面會照實顯示 NOT_FROZEN，
-  /// 而不是留白假裝一切正常。
+  /// 後端沒有專門的 provenance 端點——`freeze_id`／`score_semantics`
+  /// 是掛在每個 cell 的 `raw_layer_fields` 上（見
+  /// services/hotspot_api/repositories/cells_repo.py），這裡只多打一次
+  /// `limit=1` 的 cells 查詢去拿。任何一步失敗都回傳「尚未封存」，
+  /// 畫面會照實顯示 NOT_FROZEN，而不是留白假裝一切正常。
   Future<Provenance> fetchProvenance() async {
     if (isMock) return Provenance.unfrozen;
     try {
-      final res = await http
-          .get(Uri.parse('$baseUrl/api/provenance'))
-          .timeout(const Duration(seconds: 8));
+      final bootstrap = await _fetchBootstrap();
+      final releaseId = bootstrap['current_release_id'] as String;
+      final bbox = _taipeiBboxFrom(bootstrap);
+      final uri = Uri.parse('$baseUrl/api/v1/releases/$releaseId/cells')
+          .replace(queryParameters: {'bbox': bbox, 'limit': '1'});
+      final res = await http.get(uri).timeout(const Duration(seconds: 8));
       if (res.statusCode != 200) return Provenance.unfrozen;
-      return Provenance.fromJson(
-          jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>);
+
+      var freezeId = 'NOT_FROZEN';
+      var scoreSemantics = Provenance.unfrozen.scoreSemantics;
+      final body = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+      final features = body['features'] as List;
+      if (features.isNotEmpty) {
+        final props =
+            (features.first as Map<String, dynamic>)['properties'] as Map?;
+        final raw = props?['raw_layer_fields'] as Map?;
+        freezeId = raw?['freeze_id'] as String? ?? freezeId;
+        scoreSemantics = raw?['score_semantics'] as String? ?? scoreSemantics;
+      }
+      return Provenance(
+        releaseId: releaseId,
+        freezeId: freezeId,
+        scoreSemantics: scoreSemantics,
+      );
     } catch (_) {
       return Provenance.unfrozen;
     }
@@ -114,65 +180,32 @@ class RiskApi {
 
   /// 送出一筆民眾通報。
   ///
-  /// 後端還沒好時會直接回傳一筆帶本機 id 的紀錄，讓畫面照常運作。
+  /// `POST /api/reports` 不在 docs/API_CONTRACT.md 的契約裡，
+  /// `services/hotspot_api` 完全沒有對應端點，不是「還沒接上」而是
+  /// 後端根本沒這支 API。打真的端點只會拿到 404，卻讓使用者以為是
+  /// 自己這次通報失敗，所以一律走本機佇列，回傳一筆帶本機 id 的紀錄。
   /// 這些通報**不可以**跟見鼠雷達的資料混在一起，也不可以回灌進模型
   /// （會造成自我強化），詳見 docs/HARNESS_ARCHITECTURE.md。
   Future<CitizenReport> submitReport(CitizenReport r) async {
-    if (isMock) {
-      await Future<void>.delayed(const Duration(milliseconds: 350));
-      return r.copyWith(
-        id: 'local-${DateTime.now().millisecondsSinceEpoch}',
-        pending: false,
-      );
-    }
-    final res = await http
-        .post(
-          Uri.parse('$baseUrl/api/reports'),
-          headers: {'Content-Type': 'application/json; charset=utf-8'},
-          body: jsonEncode(r.toJson()),
-        )
-        .timeout(const Duration(seconds: 12));
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw Exception('通報送出失敗：HTTP ${res.statusCode}');
-    }
-    final body = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
-    return CitizenReport.fromJson(body);
+    await Future<void>.delayed(const Duration(milliseconds: 350));
+    return r.copyWith(
+      id: 'local-${DateTime.now().millisecondsSinceEpoch}',
+      pending: false,
+    );
   }
 
   /// 讀回已送出的通報。
+  ///
+  /// 同 [submitReport]，後端沒有 `GET /api/reports`，本機也還沒做
+  /// pending 佇列的持久化，所以固定回傳空清單。
   Future<List<CitizenReport>> fetchReports() async {
-    if (isMock) return const [];
-    final res = await http
-        .get(Uri.parse('$baseUrl/api/reports'))
-        .timeout(const Duration(seconds: 12));
-    if (res.statusCode != 200) return const [];
-    final body = jsonDecode(utf8.decode(res.bodyBytes));
-    final list = (body is Map ? body['reports'] : body) as List;
-    return list
-        .map((e) => CitizenReport.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return const [];
   }
 
   // ---------------------------------------------------------------
   // 以下只在 baseUrl 留空時使用。上台展示前務必接上真實 API，
   // 因為這些格子是程式產生的，不是臺北市的資料。
   // ---------------------------------------------------------------
-
-  /// 12 個行政區的大致中心點，用來判斷格子屬於哪一區。
-  static const _districts = <(String, double, double)>[
-    ('北投區', 25.132, 121.501),
-    ('士林區', 25.096, 121.526),
-    ('內湖區', 25.069, 121.594),
-    ('南港區', 25.038, 121.607),
-    ('松山區', 25.058, 121.558),
-    ('中山區', 25.064, 121.533),
-    ('大同區', 25.063, 121.513),
-    ('萬華區', 25.028, 121.499),
-    ('中正區', 25.032, 121.518),
-    ('大安區', 25.026, 121.543),
-    ('信義區', 25.031, 121.571),
-    ('文山區', 24.989, 121.570),
-  ];
 
   /// 臺北市邊界的粗略輪廓。
   ///
@@ -247,21 +280,10 @@ class RiskApi {
         final score =
             ((food - 45) / 455 * 0.94 + rng.nextDouble() * 0.06).clamp(0.0, 1.0);
 
-        var best = _districts.first;
-        var bestD = double.infinity;
-        for (final d in _districts) {
-          final dy = lat - d.$2, dx = lng - d.$3;
-          final dd = dy * dy + dx * dx;
-          if (dd < bestD) {
-            bestD = dd;
-            best = d;
-          }
-        }
-
         final h = dLat / 2, w = dLng / 2;
         cells.add(RiskCell(
           cellId: 'demo-${(id++).toString().padLeft(4, '0')}',
-          district: best.$1,
+          district: districtFor(LatLng(lat, lng)),
           center: LatLng(lat, lng),
           corners: [
             LatLng(lat - h, lng - w),
@@ -280,7 +302,7 @@ class RiskApi {
       }
     }
 
-    cells.sort((a, b) => b.structuralScore.compareTo(a.structuralScore));
+    cells.sort((a, b) => b.rankScore.compareTo(a.rankScore));
     return cells.take(n).toList();
   }
 }

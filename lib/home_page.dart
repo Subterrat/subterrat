@@ -147,10 +147,13 @@ class _HomePageState extends State<HomePage> {
   ///
   /// 結構性風險 × 模擬剩餘族群：地點本身多容易有老鼠，
   /// 乘上這個時間點被壓制到什麼程度。兩者相乘才是「現在這裡有多熱」。
+  ///
+  /// 用 [RiskCell.rankScore] 而不是 [RiskCell.structuralScore]，
+  /// 因為目前真實資料的 structuralScore 一律是 null。
   double _heat(RiskCell c) {
     final sim = _sims[c.cellId];
-    if (sim == null) return c.structuralScore;
-    return c.structuralScore * sim.ratio[_week];
+    if (sim == null) return c.rankScore;
+    return c.rankScore * sim.ratio[_week];
   }
 
   Set<Polygon> _polygons() {
@@ -802,7 +805,6 @@ class _DataStatusStrip extends StatelessWidget {
                   child: Text(prov.releaseId,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          fontFamily: kMonoFamily,
                           fontSize: TypeScale.micro,
                           fontWeight: FontWeight.w700,
                           color: Palette.metaValue)),
@@ -817,7 +819,6 @@ class _DataStatusStrip extends StatelessWidget {
                   child: Text(prov.isFrozen ? prov.freezeId : 'NOT_FROZEN',
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          fontFamily: kMonoFamily,
                           fontSize: TypeScale.micro,
                           fontWeight: FontWeight.w700,
                           color: Palette.metaValue)),
@@ -835,7 +836,6 @@ class _DataStatusStrip extends StatelessWidget {
               ),
               child: const Text('structural_score',
                   style: TextStyle(
-                      fontFamily: kMonoFamily,
                       fontSize: TypeScale.micro,
                       color: Palette.semanticsInk)),
             ),
@@ -1486,7 +1486,8 @@ class _CellCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           _kv('此刻熱點強度', heat.toStringAsFixed(2)),
-          _kv('結構性篩選分數', cell.structuralScore.toStringAsFixed(2)),
+          _kv('結構性篩選分數',
+              cell.structuralScore?.toStringAsFixed(2) ?? '尚未計算（缺必要分項）'),
           const SizedBox(height: 6),
           const Text('圓心為預測位置，圓形為空間不確定範圍；不是鼠患機率。',
               style: TextStyle(
@@ -1548,7 +1549,6 @@ class _CellCard extends StatelessWidget {
           const SizedBox(width: 8),
           Text(v,
               style: const TextStyle(
-                  fontFamily: kMonoFamily,
                   fontSize: TypeScale.caption,
                   fontWeight: FontWeight.w700,
                   color: Palette.ink)),

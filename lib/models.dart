@@ -1,5 +1,38 @@
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+/// 12 個行政區的大致中心點，用最近中心點法把座標分派到行政區。
+/// mock 格子與真實 API 回傳的格子共用同一套判斷——後端的
+/// `map_hotspot_cells_t0` 沒有行政區欄位，這只是顯示用途，
+/// 不是精確的行政區界圖資。
+const _districtCentroids = <(String, double, double)>[
+  ('北投區', 25.132, 121.501),
+  ('士林區', 25.096, 121.526),
+  ('內湖區', 25.069, 121.594),
+  ('南港區', 25.038, 121.607),
+  ('松山區', 25.058, 121.558),
+  ('中山區', 25.064, 121.533),
+  ('大同區', 25.063, 121.513),
+  ('萬華區', 25.028, 121.499),
+  ('中正區', 25.032, 121.518),
+  ('大安區', 25.026, 121.543),
+  ('信義區', 25.031, 121.571),
+  ('文山區', 24.989, 121.570),
+];
+
+String districtFor(LatLng p) {
+  var best = _districtCentroids.first;
+  var bestD = double.infinity;
+  for (final d in _districtCentroids) {
+    final dy = p.latitude - d.$2, dx = p.longitude - d.$3;
+    final dd = dy * dy + dx * dx;
+    if (dd < bestD) {
+      bestD = dd;
+      best = d;
+    }
+  }
+  return best.$1;
+}
+
 /// 一個聚合網格。
 ///
 /// 對外只暴露聚合後的格子，不含人孔、管段或精確店家位置。
@@ -11,10 +44,24 @@ class RiskCell {
   final List<LatLng> corners;
   final LatLng center;
 
-  /// T0 結構性分數，0–1。這是排序用的分數，不是機率。
-  final double structuralScore;
+  /// T0 結構性分數，0–1，這是排序用的分數，不是機率。
+  ///
+  /// 目前真實資料一律是 null：`MainScore` 要 food／sewer／abandoned
+  /// 三組 component 都到位才能合成，但「廢棄建築」還沒有 citywide
+  /// 排名資料，後端不會為了湊一個總分而造假（見
+  /// docs/API_CONTRACT.md 的 `MAIN_SCORE_NOT_COMPUTED_MISSING_ABANDONED_GROUP`）。
+  /// 顯示層要把 null 當成「尚未可用」，不能當 0 分處理。
+  final double? structuralScore;
 
-  /// 環境負載量的相對刻度，主要由餐飲密度決定。
+  /// 餐飲密度分位（0–1 rank percentile）。目前唯二有值的 component 之一。
+  final double? foodScore;
+
+  /// 地下水道環境分位（0–1 rank percentile）。
+  final double? sewerScore;
+
+  /// 環境負載量的相對刻度，餵給 [lib/sim.dart] 的族群模擬用。
+  /// 沒有對應的真實量測欄位，缺 structuralScore 時由 [foodScore]／
+  /// [sewerScore] 換算成同一量級，純粹是模擬情境的輸入，不是承載量估計。
   final double carryingCapacity;
 
   /// 分數的主要成因，給側邊欄顯示。
@@ -27,26 +74,95 @@ class RiskCell {
     required this.center,
     required this.structuralScore,
     required this.carryingCapacity,
+    this.foodScore,
+    this.sewerScore,
     this.topFactors = const [],
   });
 
-  factory RiskCell.fromJson(Map<String, dynamic> j) {
-    final pts = (j['corners'] as List)
-        .map((c) => LatLng((c[0] as num).toDouble(), (c[1] as num).toDouble()))
-        .toList();
+  /// 排序／地圖上色深淺用的分數。有 [structuralScore] 就直接用；
+  /// 沒有時退回可得 component 的平均值，只用來決定顯示順序與深淺，
+  /// **不代表通過驗證的綜合結構分數**——那個欄位就是 [structuralScore]，
+  /// 該是 null 就顯示 null。
+  double get rankScore {
+    final s = structuralScore;
+    if (s != null) return s;
+    final parts = [foodScore, sewerScore].whereType<double>().toList();
+    if (parts.isEmpty) return 0;
+    return parts.reduce((a, b) => a + b) / parts.length;
+  }
+
+  /// 從 `GET /api/v1/releases/{release_id}/cells` 的一個 GeoJSON Feature
+  /// 建立格子。欄位對照見 docs/API_CONTRACT.md 與
+  /// services/hotspot_api/schemas/cells.py 的 `CellFeature`。
+  factory RiskCell.fromGeoJsonFeature(Map<String, dynamic> feature) {
+    final geometry = feature['geometry'] as Map<String, dynamic>;
+    final corners = _exteriorRing(geometry);
+    final center = _centroid(corners);
+    final props = feature['properties'] as Map<String, dynamic>;
+    final components = (props['components'] as Map?) ?? const {};
+    final food = (components['food'] as num?)?.toDouble();
+    final sewer = (components['sewer'] as num?)?.toDouble();
+    final raw = (props['raw_layer_fields'] as Map?) ?? const {};
+    final coverageState =
+        props['coverage_state'] as String? ?? 'unscored_missing_group';
+
+    final factors = <String>[];
+    if (food != null) factors.add('餐飲密度分位 ${(food * 100).round()}%');
+    if (sewer != null) factors.add('污水管線分位 ${(sewer * 100).round()}%');
+    if (raw['food_top_area'] == true) factors.add('位於高餐飲密度熱區');
+    if (raw['sewer_top_area'] == true) factors.add('位於高污水風險熱區');
+    if (coverageState == 'unscored_missing_group') {
+      factors.add('缺廢棄建築分項，尚無綜合結構分數');
+    }
+
     return RiskCell(
-      cellId: j['cell_id'] as String,
-      district: (j['district'] ?? '') as String,
-      corners: pts,
-      center: LatLng(
-        (j['lat'] as num).toDouble(),
-        (j['lng'] as num).toDouble(),
-      ),
-      structuralScore: (j['score'] as num).toDouble(),
-      carryingCapacity: (j['carrying_capacity'] as num?)?.toDouble() ?? 200,
-      topFactors:
-          ((j['top_factors'] as List?) ?? const []).map((e) => '$e').toList(),
+      cellId: props['cell_id'] as String? ?? '${feature['id']}',
+      district: districtFor(center),
+      corners: corners,
+      center: center,
+      structuralScore: (props['structural_score'] as num?)?.toDouble(),
+      foodScore: food,
+      sewerScore: sewer,
+      carryingCapacity: _carryingCapacityFrom(food, sewer),
+      topFactors: factors,
     );
+  }
+
+  static double _carryingCapacityFrom(double? food, double? sewer) {
+    final parts = [food, sewer].whereType<double>().toList();
+    final avg = parts.isEmpty ? 0.5 : parts.reduce((a, b) => a + b) / parts.length;
+    return 45 + avg.clamp(0.0, 1.0) * 455;
+  }
+
+  /// GeoJSON 座標順序固定是 `[經度, 緯度]`（見 API_CONTRACT.md 5.1）。
+  /// MultiPolygon 只取第一個 polygon 的外環——地圖上每格只需要畫一個
+  /// Polygon，不需要精確重現洞或多塊幾何。
+  static List<LatLng> _exteriorRing(Map<String, dynamic> geometry) {
+    final coordinates = geometry['coordinates'] as List;
+    final ring = geometry['type'] == 'MultiPolygon'
+        ? (coordinates.first as List).first as List
+        : coordinates.first as List;
+    final points = ring
+        .map((p) => LatLng(
+              ((p as List)[1] as num).toDouble(),
+              (p[0] as num).toDouble(),
+            ))
+        .toList();
+    // GeoJSON ring 首尾點相同（閉合環），畫 Polygon 不需要重複的收尾點。
+    if (points.length > 1 && points.first == points.last) {
+      points.removeLast();
+    }
+    return points;
+  }
+
+  static LatLng _centroid(List<LatLng> points) {
+    if (points.isEmpty) return const LatLng(0, 0);
+    var lat = 0.0, lng = 0.0;
+    for (final p in points) {
+      lat += p.latitude;
+      lng += p.longitude;
+    }
+    return LatLng(lat / points.length, lng / points.length);
   }
 }
 
@@ -136,21 +252,6 @@ class Provenance {
   );
 
   bool get isFrozen => freezeId != 'NOT_FROZEN' && freezeId.isNotEmpty;
-
-  factory Provenance.fromJson(Map<String, dynamic> j) => Provenance(
-        releaseId: '${j['release_id'] ?? 'unknown'}',
-        freezeId: '${j['freeze_id'] ?? 'NOT_FROZEN'}',
-        frozenAt: DateTime.tryParse('${j['frozen_at']}')?.toLocal(),
-        t1Start: DateTime.tryParse('${j['t1_start']}')?.toLocal(),
-        t1End: DateTime.tryParse('${j['t1_end']}')?.toLocal(),
-        scoreSemantics:
-            '${j['score_semantics'] ?? unfrozen.scoreSemantics}',
-        policy: '${j['evidence_policy']}' == 'TRUSTED_RECEIPT'
-            ? EvidencePolicy.trustedReceipt
-            : EvidencePolicy.noTrustedResult,
-        sources: ((j['sources'] as Map?) ?? const {})
-            .map((k, v) => MapEntry('$k', '$v')),
-      );
 }
 
 /// 一筆已觀測到的見鼠通報（來自見鼠雷達）。

@@ -117,12 +117,6 @@ class Palette {
   }
 }
 
-/// 等寬字，用在代號與數值欄位（release_id、freeze_id、命中率等）。
-///
-/// 只打包 Latin 字符，約 100KB。中文沿用系統字型，
-/// 不打包 CJK 字型以免 web 首次載入變慢。
-const String kMonoFamily = 'DM Mono';
-
 /// 字級。Figma 原稿最小到 7px，投影會看不見，這裡整體上調並收斂成六階。
 class TypeScale {
   static const micro = 11.0; // 圖例、單位

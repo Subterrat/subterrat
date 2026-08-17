@@ -17,9 +17,9 @@ build/
 Thumbs.db
 
 # 安全性：不要提交任何含實際金鑰的檔案。
-# web/index.html 本身要進版控（Flutter web 需要它），
-# 但裡面的金鑰必須維持佔位字串。做法見 README。
+# Maps API key 走 .env（flutter_dotenv），.env.example 是佔位範本，要進版控。
 *.key
 *.pem
 .env
 .env.*
+!.env.example
