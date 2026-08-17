@@ -177,7 +177,7 @@ class RiskCell {
 enum ObservedDisplay {
   points('點狀', '綠=命中　粉=未命中'),
   density('密度', '看整體分布，數不出命中率'),
-  off('隱藏', '只看預測');
+  off('隱藏', '只看圈選範圍');
 
   const ObservedDisplay(this.label, this.hint);
   final String label;
@@ -256,9 +256,7 @@ class Provenance {
 
 /// 一筆已觀測到的見鼠通報（來自見鼠雷達）。
 ///
-/// 與 [CitizenReport] 是**不同的東西**：
-/// 這是拿來驗證模型的 outcome，那是本 app 自己收到的通報。
-/// 兩者不可混用，否則驗證會被自家資料污染。
+/// 這是拿來驗證模型的 outcome，見 docs/HARNESS_ARCHITECTURE.md。
 class ObservedReport {
   final String id;
   final LatLng location;
@@ -292,95 +290,3 @@ class ObservedReport {
       );
 }
 
-/// 民眾通報的類型。
-enum ReportKind {
-  sighting('看到老鼠'),
-  carcass('看到鼠屍'),
-  burrow('看到鼠洞或鼠道'),
-  droppings('看到鼠糞或咬痕');
-
-  const ReportKind(this.label);
-  final String label;
-}
-
-/// 一筆民眾通報。
-///
-/// 注意：這是我們自己 app 收到的通報，**不是**見鼠雷達的資料。
-/// 兩者不可混在一起：見鼠雷達是驗證模型用的 outcome，
-/// 自家通報若回灌進模型會造成自我強化，見 docs/HARNESS_ARCHITECTURE.md。
-class CitizenReport {
-  final String? id;
-  final ReportKind kind;
-  final LatLng location;
-  final String note;
-  final DateTime reportedAt;
-
-  /// pending 表示還沒送出成功，會排隊等網路恢復。
-  final bool pending;
-
-  const CitizenReport({
-    this.id,
-    required this.kind,
-    required this.location,
-    required this.note,
-    required this.reportedAt,
-    this.pending = false,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'kind': kind.name,
-        'lat': location.latitude,
-        'lng': location.longitude,
-        'note': note,
-        'reported_at': reportedAt.toUtc().toIso8601String(),
-      };
-
-  factory CitizenReport.fromJson(Map<String, dynamic> j) => CitizenReport(
-        id: j['id'] as String?,
-        kind: ReportKind.values.firstWhere(
-          (k) => k.name == j['kind'],
-          orElse: () => ReportKind.sighting,
-        ),
-        location: LatLng(
-          (j['lat'] as num).toDouble(),
-          (j['lng'] as num).toDouble(),
-        ),
-        note: (j['note'] ?? '') as String,
-        reportedAt:
-            DateTime.tryParse('${j['reported_at']}')?.toLocal() ?? DateTime.now(),
-      );
-
-  CitizenReport copyWith({String? id, bool? pending}) => CitizenReport(
-        id: id ?? this.id,
-        kind: kind,
-        location: location,
-        note: note,
-        reportedAt: reportedAt,
-        pending: pending ?? this.pending,
-      );
-}
-
-/// 模擬情境下的一列回訪時機。
-///
-/// 這不是給市府的正式建議，是模擬結果的呈現。
-class ScheduleRow {
-  final RiskCell cell;
-
-  /// 這個情境下的穩態剩餘族群比例，0–1。越高代表越壓不下去。
-  final double steadyRatio;
-
-  /// 投餌後回升到門檻所需週數。null 表示模擬期內沒回升。
-  final int? reboundWeeks;
-
-  const ScheduleRow({
-    required this.cell,
-    required this.steadyRatio,
-    required this.reboundWeeks,
-  });
-
-  /// 排序用：回升越快、壓制效果越差的排前面。
-  double get urgency {
-    final r = reboundWeeks?.toDouble() ?? 999;
-    return steadyRatio * 100 - r;
-  }
-}

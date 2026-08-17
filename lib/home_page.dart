@@ -22,15 +22,11 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   List<RiskCell> _cells = const [];
   final Map<String, SimResult> _sims = {};
-  final List<CitizenReport> _reports = [];
   List<ObservedReport> _observed = const [];
   SimParams _params = const SimParams();
 
   /// 觀測通報的呈現方式。純顯示切換，不是權限。
   ObservedDisplay _obsMode = ObservedDisplay.points;
-
-  /// 版本與封存資訊。後端沒提供時是「尚未封存」。
-  Provenance _prov = Provenance.unfrozen;
 
   GoogleMapController? _map;
 
@@ -39,12 +35,6 @@ class _HomePageState extends State<HomePage> {
 
   /// 通報事項抽屜是否展開。
   bool _noticeOpen = false;
-
-  /// 是否已通過登入閘門。
-  ///
-  /// 目前只是畫面流程，沒有串真的 Google OAuth。
-  /// 要接真登入的話換掉 [_askLogin] 的內容即可，其餘不用動。
-  bool _signedIn = false;
 
   /// 圓形不確定範圍的文字標籤，key 是格子 id。
   final Map<String, BitmapDescriptor> _labelIcons = {};
@@ -56,15 +46,15 @@ class _HomePageState extends State<HomePage> {
   DateTime get _weekDate =>
       _t0Date.add(Duration(days: (_week - RatSim.startWeek) * 7));
 
-  /// 需要提醒的事項數：待送出的通報 + 落在圈選外的觀測通報。
+  /// 需要提醒的事項數：落在圈選外的觀測通報。
   int get _alertCount =>
-      _reports.where((r) => r.pending).length +
-      (_observed.isEmpty ? 0 : (_observed.length - _hits) > 0 ? 1 : 0);
+      _observed.isEmpty ? 0 : (_observed.length - _hits) > 0 ? 1 : 0;
 
   /// 圈選比例。這個值必須事先定死並寫進封存檔，事後調整就是作弊。
   static const double kTopFraction = 0.10;
 
-  int _week = RatSim.startWeek + 2;
+  /// 開啟時固定停在今天，對應 [_WeekBadge] 的「今天」標記。
+  int _week = RatSim.startWeek;
   Timer? _ticker;
   RiskCell? _selected;
   /// 臺北市大致中心，縮放到能看到 12 個行政區。
@@ -91,15 +81,9 @@ class _HomePageState extends State<HomePage> {
     });
     try {
       final cells = await widget.api.fetchCells();
-      final reports = await widget.api.fetchReports();
       final observed = await widget.api.fetchObservedReports();
-      final prov = await widget.api.fetchProvenance();
       setState(() {
-        _prov = prov;
         _cells = cells;
-        _reports
-          ..clear()
-          ..addAll(reports);
         _observed = _markHits(observed, cells);
         _loading = false;
       });
@@ -296,7 +280,10 @@ class _HomePageState extends State<HomePage> {
 
     final img = await rec.endRecording().toImage(w.ceil(), h.ceil());
     final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
-    return BitmapDescriptor.bytes(bytes!.buffer.asUint8List());
+    // scale 用來畫得更銳利（retina），沒有 imagePixelRatio 的話地圖會
+    // 直接把這張高解析度點陣圖當成 1:1 顯示，字級因此會被放大 [scale] 倍。
+    return BitmapDescriptor.bytes(bytes!.buffer.asUint8List(),
+        imagePixelRatio: scale);
   }
 
   /// 為前三名熱點準備標籤圖片。畫好才 setState，避免地圖閃爍。
@@ -304,7 +291,7 @@ class _HomePageState extends State<HomePage> {
     final tops = _topHotspots();
     const names = ['高風險範圍', '較高風險範圍', '較高風險範圍'];
     final textStyle = await loadMapLabelTextStyle(
-      fontSize: 33,
+      fontSize: 15,
       color: Palette.uncertaintyInk,
     );
     final made = <String, BitmapDescriptor>{};
@@ -352,190 +339,7 @@ class _HomePageState extends State<HomePage> {
         ));
       }
     }
-
-    for (var i = 0; i < _reports.length; i++) {
-      final r = _reports[i];
-      out.add(Marker(
-        markerId: MarkerId(r.id ?? 'r$i'),
-        position: r.location,
-        icon: BitmapDescriptor.defaultMarkerWithHue(
-          r.pending ? BitmapDescriptor.hueOrange : BitmapDescriptor.hueAzure,
-        ),
-        infoWindow: InfoWindow(
-          title: r.kind.label,
-          snippet: r.note.isEmpty ? _fmtTime(r.reportedAt) : r.note,
-        ),
-      ));
-    }
     return out;
-  }
-
-  List<ScheduleRow> _schedule() {
-    final rows = _cells
-        .map((c) => ScheduleRow(
-              cell: c,
-              steadyRatio: RatSim.steadyRatio(
-                  carryingCapacity: c.carryingCapacity, p: _params),
-              reboundWeeks: RatSim.weeksToRebound(
-                  carryingCapacity: c.carryingCapacity, p: _params),
-            ))
-        .toList();
-    rows.sort((a, b) => b.urgency.compareTo(a.urgency));
-    return rows.take(25).toList();
-  }
-
-  // -------------------------------------------------------------------
-  // 民眾通報
-  // -------------------------------------------------------------------
-
-  /// 登入閘門。
-  ///
-  /// 目前只是畫面流程，按下去直接視為登入成功，沒有串真的 Google OAuth。
-  /// 要接真登入時只要換掉這個函式的內容，呼叫端不用動。
-  Future<bool> _askLogin() async {
-    if (_signedIn) return true;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16)),
-        title: const Text('登入後通報鼠蹤',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-        content: const Text('瀏覽地圖不用登入；只有送出通報時需要 Google 帳號。',
-            style: TextStyle(
-                fontSize: TypeScale.body,
-                height: 1.6,
-                color: Palette.bodyInk)),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('先不要')),
-          FilledButton.icon(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: Palette.brand),
-            icon: const Icon(Icons.account_circle_outlined, size: 18),
-            label: const Text('使用 Google 繼續'),
-          ),
-        ],
-      ),
-    );
-    if (ok == true) setState(() => _signedIn = true);
-    return ok == true;
-  }
-
-  Future<void> _openReportSheet() async {
-    if (!await _askLogin()) return;
-    if (!mounted) return;
-    var kind = ReportKind.sighting;
-    final noteCtl = TextEditingController();
-    final at = _mapCenter;
-
-    final ok = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Palette.surface,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-            left: 18,
-            right: 18,
-            top: 16,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 18),
-        child: StatefulBuilder(
-          builder: (ctx, setSheet) => Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('回報你看到的狀況',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 3),
-              Text(
-                '位置取畫面中央：${at.latitude.toStringAsFixed(5)}, '
-                '${at.longitude.toStringAsFixed(5)}\n'
-                '關掉這張表、移動地圖，再按一次通報鈕就能改位置。',
-                style: const TextStyle(fontSize: 12, color: Palette.inkFaint),
-              ),
-              const SizedBox(height: 14),
-              const Text('看到什麼',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: ReportKind.values
-                    .map((k) => ChoiceChip(
-                          label: Text(k.label),
-                          selected: kind == k,
-                          onSelected: (_) => setSheet(() => kind = k),
-                        ))
-                    .toList(),
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: noteCtl,
-                maxLines: 3,
-                maxLength: 200,
-                decoration: const InputDecoration(
-                  labelText: '補充說明（可不填）',
-                  hintText: '例如：從水溝蓋鑽進去，灰色，大概成年鼠',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Row(children: [
-                Expanded(
-                  child: Text(
-                    '送出的內容會標為本 app 的通報，與見鼠雷達的資料分開存放。',
-                    style: TextStyle(fontSize: 11, color: Palette.inkFaint),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                TextButton(
-                    onPressed: () => Navigator.pop(ctx, false),
-                    child: const Text('取消')),
-                FilledButton(
-                    onPressed: () => Navigator.pop(ctx, true),
-                    child: const Text('送出')),
-              ]),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    if (ok != true) {
-      noteCtl.dispose();
-      return;
-    }
-
-    final draft = CitizenReport(
-      kind: kind,
-      location: at,
-      note: noteCtl.text.trim(),
-      reportedAt: DateTime.now(),
-      pending: true,
-    );
-    noteCtl.dispose();
-    setState(() => _reports.insert(0, draft));
-
-    try {
-      final saved = await widget.api.submitReport(draft);
-      if (!mounted) return;
-      setState(() {
-        final i = _reports.indexOf(draft);
-        if (i >= 0) _reports[i] = saved;
-      });
-      _toast('通報已送出，謝謝');
-    } catch (e) {
-      if (!mounted) return;
-      _toast('送不出去，先留在待送清單：$e');
-    }
-  }
-
-  void _toast(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(msg)));
   }
 
   static String _fmtTime(DateTime t) =>
@@ -567,14 +371,6 @@ class _HomePageState extends State<HomePage> {
     }
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openReportSheet,
-        backgroundColor: Palette.brand,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_a_photo_outlined, size: 21),
-        label: const Text('通報鼠蹤',
-            style: TextStyle(fontWeight: FontWeight.w700)),
-      ),
       body: SafeArea(
         child: Column(children: [
           Expanded(child: _buildMap()),
@@ -588,36 +384,22 @@ class _HomePageState extends State<HomePage> {
           ),
           SizedBox(
             height: 268,
-            child: DefaultTabController(
-              length: 3,
-              child: Column(children: [
-                ColoredBox(
-                  color: Palette.surface,
-                  child: TabBar(
-                    labelColor: Palette.accent,
-                    unselectedLabelColor: Palette.inkFaint,
-                    indicatorColor: Palette.accent,
-                    labelStyle: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w700),
-                    tabs: [
-                      const Tab(text: '投藥情境'),
-                      const Tab(text: '回訪時機'),
-                      Tab(text: '民眾通報 ${_reports.isEmpty ? "" : _reports.length}'),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: TabBarView(children: [
-                    _ScenarioTab(params: _params, onChanged: _setParams),
-                    _ScheduleTab(
-                      rows: _schedule(),
-                      onTap: (c) => setState(() => _selected = c),
-                    ),
-                    _ReportsTab(reports: _reports, onAdd: _openReportSheet),
-                  ]),
-                ),
-              ]),
-            ),
+            child: Column(children: [
+              Container(
+                width: double.infinity,
+                color: Palette.surface,
+                padding: const EdgeInsets.symmetric(vertical: 11),
+                child: const Text('投藥情境',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Palette.accent)),
+              ),
+              Expanded(
+                child: _ScenarioTab(params: _params, onChanged: _setParams),
+              ),
+            ]),
           ),
         ]),
       ),
@@ -703,17 +485,13 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
 
-      // 縮放按鈕左邊：版本狀態條與資料來源
+      // 縮放按鈕左邊：資料來源
       if (_infoOpen)
-        Positioned(
+        const Positioned(
           right: 62,
           top: 64,
           width: 430,
-          child: Column(children: [
-            _DataStatusStrip(prov: _prov),
-            const SizedBox(height: 6),
-            const _StructuralSources(),
-          ]),
+          child: _StructuralSources(),
         ),
 
       if (_noticeOpen)
@@ -757,111 +535,15 @@ class _HomePageState extends State<HomePage> {
 
 // ---------------------------------------------------------------------------
 
-/// 版本與證據狀態條。
-///
-/// `NO_TRUSTED_RESULT` 必須明講而不是省略 —— 沒有驗證收據就是沒有，
-/// 留白會讓人誤以為已經驗證過。
-class _DataStatusStrip extends StatelessWidget {
-  const _DataStatusStrip({required this.prov});
-
-  final Provenance prov;
-
-  static const _panelShadow = [
-    BoxShadow(color: Color(0x243F2C1F), blurRadius: 24, offset: Offset(0, 8)),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final untrusted = prov.policy == EvidencePolicy.noTrustedResult;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: Palette.statusBg,
-        border: Border.all(color: Palette.statusBorder),
-        borderRadius: BorderRadius.circular(7),
-        boxShadow: _panelShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-              decoration: BoxDecoration(
-                color: untrusted ? Palette.evidenceBadge : Palette.brand,
-                borderRadius: BorderRadius.circular(2),
-              ),
-              child: Text(prov.policy.code,
-                  style: const TextStyle(
-                      fontSize: TypeScale.micro,
-                      fontWeight: FontWeight.w700,
-                      height: 1.1,
-                      color: Colors.white)),
-            ),
-            const SizedBox(width: 9),
-            Flexible(
-              child: Row(children: [
-                const Text('release ',
-                    style: TextStyle(
-                        fontSize: TypeScale.micro, color: Palette.metaLabel)),
-                Flexible(
-                  child: Text(prov.releaseId,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: TypeScale.micro,
-                          fontWeight: FontWeight.w700,
-                          color: Palette.metaValue)),
-                ),
-                const Text('　·　',
-                    style: TextStyle(
-                        fontSize: TypeScale.micro, color: Palette.metaSep)),
-                const Text('freeze ',
-                    style: TextStyle(
-                        fontSize: TypeScale.micro, color: Palette.metaLabel)),
-                Flexible(
-                  child: Text(prov.isFrozen ? prov.freezeId : 'NOT_FROZEN',
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: TypeScale.micro,
-                          fontWeight: FontWeight.w700,
-                          color: Palette.metaValue)),
-                ),
-              ]),
-            ),
-          ]),
-          const SizedBox(height: 5),
-          Row(children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              decoration: BoxDecoration(
-                color: Palette.semanticsPill,
-                borderRadius: BorderRadius.circular(3),
-              ),
-              child: const Text('structural_score',
-                  style: TextStyle(
-                      fontSize: TypeScale.micro,
-                      color: Palette.semanticsInk)),
-            ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(prov.scoreSemantics,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontSize: TypeScale.micro, color: Palette.helperInk)),
-            ),
-          ]),
-        ],
-      ),
-    );
-  }
-}
-
 /// 三組結構性資料來源。對應 docs/BELIEF.md 鎖定的三組輸入。
 class _StructuralSources extends StatelessWidget {
   const _StructuralSources();
 
   static const _groups = ['餐飲／市場', '地下環境', '廢棄建築'];
+
+  static const _panelShadow = [
+    BoxShadow(color: Color(0x243F2C1F), blurRadius: 24, offset: Offset(0, 8)),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -871,7 +553,7 @@ class _StructuralSources extends StatelessWidget {
         color: Palette.statusBg,
         border: Border.all(color: Palette.statusBorder),
         borderRadius: BorderRadius.circular(7),
-        boxShadow: _DataStatusStrip._panelShadow,
+        boxShadow: _panelShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1045,17 +727,7 @@ class _BrandMark extends StatelessWidget {
         boxShadow: Palette.cardShadow,
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Container(
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            color: Palette.brand,
-            borderRadius: BorderRadius.circular(9),
-          ),
-          // TODO: 換成 logo 圖檔，放進 assets/ 並在 pubspec 宣告。
-          child: const Icon(Icons.hexagon_outlined,
-              size: 17, color: Colors.white),
-        ),
+        Image.asset('assets/images/logo_mark.png', width: 30, height: 30),
         const SizedBox(width: 8),
         const Text('Subterrat',
             style: TextStyle(
@@ -1176,9 +848,9 @@ class _LegendPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = switch (mode) {
-      ObservedDisplay.points => '橘圈為預測不確定範圍・綠點命中・粉點未命中',
-      ObservedDisplay.density => '橘圈為預測不確定範圍・紫色深淺為通報密度',
-      ObservedDisplay.off => '橘圈為預測不確定範圍',
+      ObservedDisplay.points => '橘圈為不確定範圍・綠點命中・粉點未命中',
+      ObservedDisplay.density => '橘圈為不確定範圍・紫色深淺為通報密度',
+      ObservedDisplay.off => '橘圈為不確定範圍',
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
@@ -1428,7 +1100,7 @@ class _CellCard extends StatelessWidget {
         children: [
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             const Flexible(
-              child: Text('預測中心與不確定範圍',
+              child: Text('圈選中心與不確定範圍',
                   style: TextStyle(
                       fontSize: TypeScale.label,
                       fontWeight: FontWeight.w700,
@@ -1493,7 +1165,7 @@ class _CellCard extends StatelessWidget {
           _kv('結構性篩選分數',
               cell.structuralScore?.toStringAsFixed(2) ?? '尚未計算（缺必要分項）'),
           const SizedBox(height: 6),
-          const Text('圓心為預測位置，圓形為空間不確定範圍；不是鼠患機率。',
+          const Text('圓心為圈選位置，圓形為空間不確定範圍；不是鼠患機率。',
               style: TextStyle(
                   fontSize: TypeScale.micro,
                   height: 1.5,
@@ -1650,17 +1322,6 @@ class _ScenarioTab extends StatelessWidget {
           24,
           (v) => onChanged(params.copyWith(periodWeeks: v.round())),
         ),
-        _slider(
-          '周邊移入',
-          '${(params.migration * 100).round()}%',
-          '把這一格清乾淨之後，旁邊沒處理的地方會有老鼠搬過來填補。'
-              '拉高看看：只處理一個點會變得幾乎沒有用。',
-          params.migration,
-          0,
-          0.4,
-          40,
-          (v) => onChanged(params.copyWith(migration: v)),
-        ),
       ],
     );
   }
@@ -1697,157 +1358,3 @@ class _ScenarioTab extends StatelessWidget {
   }
 }
 
-class _ScheduleTab extends StatelessWidget {
-  const _ScheduleTab({required this.rows, required this.onTap});
-
-  final List<ScheduleRow> rows;
-  final ValueChanged<RiskCell> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    if (rows.isEmpty) return const Center(child: Text('沒有資料'));
-    return Column(children: [
-      Container(
-        color: Palette.surfaceAlt,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        child: const Row(children: [
-          Expanded(flex: 4, child: _H('位置')),
-          Expanded(flex: 3, child: _H('壓不下去的程度')),
-          Expanded(flex: 3, child: _H('多久長回來')),
-        ]),
-      ),
-      Expanded(
-        child: ListView.separated(
-          itemCount: rows.length,
-          separatorBuilder: (_, _) => const Divider(height: 1),
-          itemBuilder: (ctx, i) {
-            final r = rows[i];
-            return InkWell(
-              onTap: () => onTap(r.cell),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                child: Row(children: [
-                  Expanded(
-                    flex: 4,
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(r.cell.district,
-                              style: const TextStyle(
-                                  fontSize: 13, fontWeight: FontWeight.w600)),
-                          Text(r.cell.cellId,
-                              style: const TextStyle(
-                                  fontSize: 11, color: Palette.inkFaint)),
-                        ]),
-                  ),
-                  Expanded(
-                    flex: 3,
-                    child: Row(children: [
-                      Container(
-                          width: 9,
-                          height: 9,
-                          color: Palette.riskColor(r.steadyRatio)),
-                      const SizedBox(width: 6),
-                      Text('${(r.steadyRatio * 100).round()}%',
-                          style: const TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w700)),
-                    ]),
-                  ),
-                  Expanded(
-                    flex: 3,
-                    child: Text(
-                        r.reboundWeeks == null ? '沒長回來' : '${r.reboundWeeks} 週',
-                        style: const TextStyle(
-                            fontSize: 13, color: Palette.inkSoft)),
-                  ),
-                ]),
-              ),
-            );
-          },
-        ),
-      ),
-    ]);
-  }
-}
-
-class _ReportsTab extends StatelessWidget {
-  const _ReportsTab({required this.reports, required this.onAdd});
-
-  final List<CitizenReport> reports;
-  final VoidCallback onAdd;
-
-  @override
-  Widget build(BuildContext context) {
-    if (reports.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(22),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.pin_drop_outlined,
-                size: 32, color: Palette.inkFaint),
-            const SizedBox(height: 8),
-            const Text('還沒有通報',
-                style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 3),
-            const Text('把地圖移到看到老鼠的位置，再按右下角的通報鈕。',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: Palette.inkFaint)),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: onAdd,
-              icon: const Icon(Icons.add_alert_outlined, size: 17),
-              label: const Text('我要通報'),
-            ),
-          ]),
-        ),
-      );
-    }
-    return ListView.separated(
-      itemCount: reports.length,
-      separatorBuilder: (_, _) => const Divider(height: 1),
-      itemBuilder: (ctx, i) {
-        final r = reports[i];
-        return ListTile(
-          dense: true,
-          leading: Icon(
-            r.pending ? Icons.schedule : Icons.check_circle_outline,
-            size: 19,
-            color: r.pending ? Palette.danger : Palette.accent,
-          ),
-          title: Text(r.kind.label,
-              style:
-                  const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
-          subtitle: Text(
-            [
-              _HomePageState._fmtTime(r.reportedAt),
-              '${r.location.latitude.toStringAsFixed(4)}, '
-                  '${r.location.longitude.toStringAsFixed(4)}',
-              if (r.note.isNotEmpty) r.note,
-            ].join('　'),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11.5, color: Palette.inkFaint),
-          ),
-          trailing: r.pending
-              ? const Text('待送出',
-                  style: TextStyle(fontSize: 11, color: Palette.danger))
-              : null,
-        );
-      },
-    );
-  }
-}
-
-class _H extends StatelessWidget {
-  const _H(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Text(text,
-      style: const TextStyle(
-          fontSize: 10.5,
-          letterSpacing: 0.6,
-          fontWeight: FontWeight.w700,
-          color: Palette.inkFaint));
-}

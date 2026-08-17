@@ -13,7 +13,7 @@ import 'models.dart';
 /// 兩邊都要動）。實際契約見 docs/API_CONTRACT.md：目前只有
 /// `/api/v1/map/bootstrap`、`/api/v1/releases/current`、
 /// `/api/v1/releases/{release_id}/cells` 這三個讀端點是真的有實作，
-/// `observed`／`reports`（民眾通報送出）在後端完全不存在對應端點。
+/// `observed` 在後端完全不存在對應端點。
 ///
 /// [baseUrl] 留空時會自動改用本機產生的示範格子，
 /// 這樣後端還沒好之前你也能先把整個介面做完。
@@ -176,30 +176,6 @@ class RiskApi {
       ));
     }
     return out;
-  }
-
-  /// 送出一筆民眾通報。
-  ///
-  /// `POST /api/reports` 不在 docs/API_CONTRACT.md 的契約裡，
-  /// `services/hotspot_api` 完全沒有對應端點，不是「還沒接上」而是
-  /// 後端根本沒這支 API。打真的端點只會拿到 404，卻讓使用者以為是
-  /// 自己這次通報失敗，所以一律走本機佇列，回傳一筆帶本機 id 的紀錄。
-  /// 這些通報**不可以**跟見鼠雷達的資料混在一起，也不可以回灌進模型
-  /// （會造成自我強化），詳見 docs/HARNESS_ARCHITECTURE.md。
-  Future<CitizenReport> submitReport(CitizenReport r) async {
-    await Future<void>.delayed(const Duration(milliseconds: 350));
-    return r.copyWith(
-      id: 'local-${DateTime.now().millisecondsSinceEpoch}',
-      pending: false,
-    );
-  }
-
-  /// 讀回已送出的通報。
-  ///
-  /// 同 [submitReport]，後端沒有 `GET /api/reports`，本機也還沒做
-  /// pending 佇列的持久化，所以固定回傳空清單。
-  Future<List<CitizenReport>> fetchReports() async {
-    return const [];
   }
 
   // ---------------------------------------------------------------

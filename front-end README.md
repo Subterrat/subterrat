@@ -1,6 +1,6 @@
 # SubTerrat 前端
 
-臺北見鼠通報熱點預測的地圖介面。Flutter，目前只建 web 平台。
+臺北見鼠通報熱點的地圖介面。Flutter，目前只建 web 平台。
 
 ## 先設定 Maps 金鑰
 
@@ -47,7 +47,7 @@ flutter run -d chrome --dart-define=API_BASE=https://your-service.run.app
 | `GET /api/v1/releases/current` | 指向目前公開的 release |
 | `GET /api/v1/releases/{release_id}/cells?bbox=...` | 網格與分數，GeoJSON、依 bbox 分頁 |
 
-`GET /api/observed`（見鼠雷達通報）與 `POST /api/reports`（民眾通報）**在後端完全沒有對應端點**，不是還沒接上而是還沒被實作，`lib/api.dart` 目前對這兩塊固定回傳本機/空資料，等後端補上再串。
+`GET /api/observed`（見鼠雷達通報）**在後端完全沒有對應端點**，不是還沒接上而是還沒被實作，`lib/api.dart` 目前固定回傳本機示範資料，等後端補上再串。
 
 回傳格式見 `lib/models.dart` 的 `RiskCell.fromGeoJsonFeature`。有一點目前串接上要注意：`structural_score` 現在**一律是 `null`**——`MainScore` 要 food／sewer／abandoned 三組分項都到位才能合成，但「廢棄建築」還沒有 citywide 排名資料，後端不會為了湊一個總分而造假。畫面上排序與地圖上色改用 `RiskCell.rankScore`（可得分項的平均值），不是通過驗證的綜合分數。
 
@@ -69,7 +69,7 @@ flutter run -d chrome --dart-define=API_BASE=https://your-service.run.app
 
 **圓形不確定範圍用結構性分數決定，不是當下熱度。** 圈選代表「事先指出的地方」，播放時間軸時它不該移動。
 
-**觀測通報的密度模式用紫色不是紅色。** 預測範圍是橘色，紅橘同屬暖色，疊在一起時重疊區會糊掉，而那正是要看清楚的地方。
+**觀測通報的密度模式用紫色不是紅色。** 圈選範圍是橘色，紅橘同屬暖色，疊在一起時重疊區會糊掉，而那正是要看清楚的地方。
 
 **底圖一定要套 `kMutedMapStyle`。** 沒有它的話 Google 地圖水域的藍會跟介面主色混在一起。
 
@@ -77,8 +77,8 @@ flutter run -d chrome --dart-define=API_BASE=https://your-service.run.app
 
 ## 待辦
 
-- logo 色碼與圖檔目前是佔位值（`Palette.brand` / `_BrandMark`）
+- `Palette.brand` 還是佔位色碼，尚未換成 logo 的實際色碼
 - Figma 的主色還是綠色 `#126D50`，需與這裡的深藍同步
 - 字級：Figma 原稿最小 7px，這裡拉到 11px 起跳（7px 投影看不見），Figma 需跟著調
 - 「廢棄建築」還沒有 citywide 排名資料，`structural_score` 因此一律是 `null`（見上方「後端端點」）；等這組資料到位後才有真正的綜合結構分數
-- `GET /api/observed`、`POST /api/reports` 後端還沒實作，前端目前分別固定回退到示範資料／本機佇列
+- `GET /api/observed` 後端還沒實作，前端目前固定回退到示範資料

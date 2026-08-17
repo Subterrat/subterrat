@@ -32,3 +32,4 @@ flutter:
   # bundles whatever real .env exists on the machine doing the build.
   assets:
     - .env
+    - assets/images/logo_mark.png

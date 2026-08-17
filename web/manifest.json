@@ -5,7 +5,7 @@
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "SubTerrat — 臺北見鼠通報熱點預測介面",
+    "description": "SubTerrat — 臺北見鼠通報熱點地圖介面",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
