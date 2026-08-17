@@ -13,7 +13,7 @@ v0.1 會在 BigQuery 產生兩個不使用見鼠資料擬合的結構性熱點�
 
 - Google Cloud project：`devjam26aug17tpe-1270`
 - BigQuery location：`asia-east1`
-- Python 3.11+
+- [`uv`](https://docs.astral.sh/uv/)（管理 Python 版本與依賴；`pyproject.toml` 宣告 `requires-python = ">=3.11"`，`.python-version` 釘選本機開發用 3.12）
 - 已存在下列表格：
   - `subterrat_raw.taipei_s2_l15_grid_raw`
   - `subterrat_curated.food_site_candidate_geo`
@@ -26,15 +26,16 @@ v0.1 會在 BigQuery 產生兩個不使用見鼠資料擬合的結構性熱點�
 ## 本機驗證
 
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install -r requirements-dev.txt
-PYTHONPATH=. .venv/bin/python -m unittest discover -s tests -v
+uv sync --group dev
+PYTHONPATH=. uv run python -m unittest discover -s tests -v
 ```
+
+`uv sync` 會依 `.python-version` 自動下載/使用 Python 3.12（不需要系統已裝該版本），並依 `uv.lock` 安裝所有 pinned 依賴到 `.venv`；不需要另外手動建立 venv 或跑 `pip install`。
 
 ## 建立臺北 S2 Level 15 網格
 
 ```bash
-PYTHONPATH=. .venv/bin/python scripts/build_taipei_s2_grid.py \
+PYTHONPATH=. uv run python scripts/build_taipei_s2_grid.py \
   --output artifacts/taipei_s2_l15.ndjson \
   --manifest artifacts/taipei_s2_l15.manifest.json
 ```
@@ -114,15 +115,15 @@ MAX_FEATURES_PER_REQUEST=1500
 
 ### 安裝與本機執行
 
+依賴已與資料管線腳本共用同一個 `pyproject.toml`／`uv.lock`（`dev` group 額外含 `httpx`，供 FastAPI `TestClient` 使用）：
+
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-.venv/bin/pip install -r requirements-dev.txt   # 測試用，額外含 httpx
-PYTHONPATH=. .venv/bin/python -m unittest discover -s tests -v
+uv sync --group dev
+PYTHONPATH=. uv run python -m unittest discover -s tests -v
 ```
 
 ```bash
-PYTHONPATH=. .venv/bin/uvicorn services.hotspot_api.public_app:app --reload --port 8080
+PYTHONPATH=. uv run uvicorn services.hotspot_api.public_app:app --reload --port 8080
 ```
 
 `/healthz` 與 `/api/v1/model-capabilities` 不需要 GCP 憑證。`/readyz`、`/releases/current`、`/releases/{release_id}/cells*` 會實際查詢
