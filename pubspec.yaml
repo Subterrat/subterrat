@@ -1,5 +1,5 @@
 name: subterrat_app
-description: "SubTerrat — 臺北見鼠通報熱點預測介面"
+description: "SubTerrat — 臺北見鼠通報熱點介面"
 publish_to: 'none'
 
 version: 1.0.0+1
