@@ -1,3 +1,9 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+artifacts/
+
 # Flutter / Dart
 .dart_tool/
 .packages
