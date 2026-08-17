@@ -1,0 +1,290 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://subterrat.invalid/contracts/network_redistribution_api_v0_3.schema.json",
+  "title": "SubTerrat v0.3 internal synthetic network redistribution API",
+  "x-normative-wire-rules": {
+    "canonical_validator_id": "subterrat_network_redistribution_wire_v0_3",
+    "canonical_validator_required_in_addition_to_json_schema": true,
+    "integer_rules": "BASE10_NO_LEADING_ZERO_EXCEPT_ZERO_NEGATIVE_ZERO_FORBIDDEN",
+    "decimal_rules": "FIXED_DECLARED_SCALE_NO_EXPONENT_NEGATIVE_ZERO_FORBIDDEN_display_scale_max_STRICTLY_POSITIVE",
+    "cell_order": "SIGNED_INT64_NUMERIC_ASCENDING",
+    "link_orientation": "FROM_CELL_ID_SIGNED_INT64_STRICTLY_LESS_THAN_TO_CELL_ID_SIGNED_INT64_AND_SERIALIZER_MUST_NOT_REORIENT",
+    "link_order": "LINK_CLASS_LEXICOGRAPHIC_THEN_FROM_CELL_SIGNED_INT64_THEN_TO_CELL_SIGNED_INT64",
+    "global_limitation_codes_by_scenario": {
+      "n0_uniform_sewer_link_comparator": [
+        "CELL_GRAPH_IS_NOT_TRUE_SEWER_TOPOLOGY",
+        "CELL_LEVEL_MIXING_CAN_CONNECT_DISCONNECTED_INTERNAL_SUBNETWORKS",
+        "ITERATION_8_NOT_CONVERGENCE_OR_FINAL_STATE",
+        "NO_FIELD_GROUND_TRUTH",
+        "NO_TAIPEI_MOVEMENT_OR_TEMPORAL_CALIBRATION",
+        "NO_TRUSTED_RESULT",
+        "PIPE_FLOW_AND_RAT_MOVEMENT_DIRECTION_UNVERIFIED",
+        "RAW_NODE_IDS_HAVE_SPATIAL_CONFLICTS",
+        "URBAN_RENEWAL_NOT_USED_NO_RELIABLE_CONSTRUCTION_TIMELINE",
+        "V0_2_SEWER_METRIC_GATES_INCOMPLETE"
+      ],
+      "n1_metric_weighted_sewer_links": [
+        "CELL_GRAPH_IS_NOT_TRUE_SEWER_TOPOLOGY",
+        "CELL_LEVEL_MIXING_CAN_CONNECT_DISCONNECTED_INTERNAL_SUBNETWORKS",
+        "ITERATION_8_NOT_CONVERGENCE_OR_FINAL_STATE",
+        "NO_FIELD_GROUND_TRUTH",
+        "NO_TAIPEI_MOVEMENT_OR_TEMPORAL_CALIBRATION",
+        "NO_TRUSTED_RESULT",
+        "PIPE_FLOW_AND_RAT_MOVEMENT_DIRECTION_UNVERIFIED",
+        "RAW_NODE_IDS_HAVE_SPATIAL_CONFLICTS",
+        "URBAN_RENEWAL_NOT_USED_NO_RELIABLE_CONSTRUCTION_TIMELINE",
+        "V0_2_SEWER_METRIC_GATES_INCOMPLETE"
+      ],
+      "n2_generic_cell_adjacency_sensitivity": [
+        "CELL_GRAPH_IS_NOT_TRUE_SEWER_TOPOLOGY",
+        "CELL_LEVEL_MIXING_CAN_CONNECT_DISCONNECTED_INTERNAL_SUBNETWORKS",
+        "GENERIC_ADJACENCY_BARRIERS_NOT_MODELED",
+        "ITERATION_8_NOT_CONVERGENCE_OR_FINAL_STATE",
+        "NO_FIELD_GROUND_TRUTH",
+        "NO_TAIPEI_MOVEMENT_OR_TEMPORAL_CALIBRATION",
+        "NO_TRUSTED_RESULT",
+        "PIPE_FLOW_AND_RAT_MOVEMENT_DIRECTION_UNVERIFIED",
+        "RAW_NODE_IDS_HAVE_SPATIAL_CONFLICTS",
+        "URBAN_RENEWAL_NOT_USED_NO_RELIABLE_CONSTRUCTION_TIMELINE",
+        "V0_2_SEWER_METRIC_GATES_INCOMPLETE"
+      ]
+    },
+    "cell_limitation_code_assignment": {
+      "base_all_cells": ["CELL_GRAPH_IS_NOT_TRUE_SEWER_TOPOLOGY", "V0_2_SEWER_METRIC_GATES_INCOMPLETE"],
+      "if_sewer_attribute_available_false_add": "SEWER_ATTRIBUTE_MISSING",
+      "if_eligible_sewer_neighbor_count_zero_add": "NO_ELIGIBLE_SEWER_NEIGHBOR",
+      "if_cell_support_state_GENERIC_ADJACENCY_ONLY_add": "GENERIC_ADJACENCY_ONLY_SUPPORT",
+      "if_self_only_transition_row_true_add": "SELF_ONLY_TRANSITION_ROW",
+      "final_array": "EXACT_UNION_OF_APPLICABLE_RULES_LEXICOGRAPHIC_ASCENDING_UNIQUE_NO_OTHER_CODES"
+    },
+    "link_limitation_codes_by_class": {
+      "SYNTHETIC_SEWER_LINK": ["SCHEMATIC_CENTROID_LINK_NOT_PIPE_ALIGNMENT", "V0_2_SEWER_METRIC_GATES_INCOMPLETE"],
+      "GENERIC_CELL_ADJACENCY": ["GENERIC_ADJACENCY_BARRIERS_NOT_MODELED", "SCHEMATIC_CENTROID_LINK_NOT_PIPE_ALIGNMENT"]
+    }
+  },
+  "oneOf": [
+    {"$ref": "#/$defs/cellsResponse"},
+    {"$ref": "#/$defs/linksResponse"}
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "cellId": {"type": "string", "pattern": "^(0|-?[1-9][0-9]*)$"},
+    "decimal7": {"type": "string", "pattern": "^-?(0|[1-9][0-9]*)\\.[0-9]{7}$", "x-canonical-validator-rule": "NEGATIVE_ZERO_FORBIDDEN"},
+    "decimal12Unit": {"type": "string", "pattern": "^(0\\.[0-9]{12}|1\\.000000000000)$"},
+    "decimal24Positive": {"type": "string", "pattern": "^(0\\.(?!0{24}$)[0-9]{24}|[1-9][0-9]*\\.[0-9]{24})$"},
+    "scenarioId": {
+      "type": "string",
+      "enum": [
+        "n0_uniform_sewer_link_comparator",
+        "n1_metric_weighted_sewer_links",
+        "n2_generic_cell_adjacency_sensitivity"
+      ]
+    },
+    "globalLimitationCode": {
+      "type": "string",
+      "enum": [
+        "CELL_GRAPH_IS_NOT_TRUE_SEWER_TOPOLOGY",
+        "CELL_LEVEL_MIXING_CAN_CONNECT_DISCONNECTED_INTERNAL_SUBNETWORKS",
+        "GENERIC_ADJACENCY_BARRIERS_NOT_MODELED",
+        "ITERATION_8_NOT_CONVERGENCE_OR_FINAL_STATE",
+        "NO_FIELD_GROUND_TRUTH",
+        "NO_TAIPEI_MOVEMENT_OR_TEMPORAL_CALIBRATION",
+        "NO_TRUSTED_RESULT",
+        "PIPE_FLOW_AND_RAT_MOVEMENT_DIRECTION_UNVERIFIED",
+        "RAW_NODE_IDS_HAVE_SPATIAL_CONFLICTS",
+        "URBAN_RENEWAL_NOT_USED_NO_RELIABLE_CONSTRUCTION_TIMELINE",
+        "V0_2_SEWER_METRIC_GATES_INCOMPLETE"
+      ]
+    },
+    "cellLimitationCode": {
+      "type": "string",
+      "enum": [
+        "CELL_GRAPH_IS_NOT_TRUE_SEWER_TOPOLOGY",
+        "GENERIC_ADJACENCY_ONLY_SUPPORT",
+        "NO_ELIGIBLE_SEWER_NEIGHBOR",
+        "SELF_ONLY_TRANSITION_ROW",
+        "SEWER_ATTRIBUTE_MISSING",
+        "V0_2_SEWER_METRIC_GATES_INCOMPLETE"
+      ]
+    },
+    "linkLimitationCode": {
+      "type": "string",
+      "enum": [
+        "GENERIC_ADJACENCY_BARRIERS_NOT_MODELED",
+        "SCHEMATIC_CENTROID_LINK_NOT_PIPE_ALIGNMENT",
+        "V0_2_SEWER_METRIC_GATES_INCOMPLETE"
+      ]
+    },
+    "globalLimitationCodes": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/globalLimitationCode"},
+      "uniqueItems": true,
+      "x-canonical-order": "LEXICOGRAPHIC_ASCENDING"
+    },
+    "cellLimitationCodes": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/cellLimitationCode"},
+      "uniqueItems": true,
+      "x-canonical-order": "LEXICOGRAPHIC_ASCENDING"
+    },
+    "linkLimitationCodes": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/linkLimitationCode"},
+      "uniqueItems": true,
+      "x-canonical-order": "LEXICOGRAPHIC_ASCENDING"
+    },
+    "baseMetadata": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "contract_hash",
+        "finalized_input_manifest_hash",
+        "run_id",
+        "scenario_id",
+        "use_state",
+        "evidence_state",
+        "operational_use",
+        "global_limitation_codes"
+      ],
+      "properties": {
+        "schema_version": {"const": "0.3.0"},
+        "contract_hash": {"$ref": "#/$defs/sha256"},
+        "finalized_input_manifest_hash": {"$ref": "#/$defs/sha256"},
+        "run_id": {"$ref": "#/$defs/sha256"},
+        "scenario_id": {"$ref": "#/$defs/scenarioId"},
+        "use_state": {"const": "INTERNAL_SIMULATION_ONLY"},
+        "evidence_state": {"const": "NO_TRUSTED_RESULT"},
+        "operational_use": {"const": "PROHIBITED"},
+        "global_limitation_codes": {"$ref": "#/$defs/globalLimitationCodes"}
+      }
+    },
+    "cellsMetadata": {
+      "allOf": [
+        {"$ref": "#/$defs/baseMetadata"},
+        {
+          "type": "object",
+          "required": ["abstract_iteration", "normalization_scope", "display_scale_max"],
+          "properties": {
+            "abstract_iteration": {"type": "integer", "minimum": 0, "maximum": 8},
+            "normalization_scope": {"const": "LOCKED_RUN_GLOBAL_ALL_SCENARIOS_AND_ITERATIONS"},
+            "display_scale_max": {"$ref": "#/$defs/decimal24Positive"}
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "linksMetadata": {
+      "allOf": [{"$ref": "#/$defs/baseMetadata"}],
+      "unevaluatedProperties": false
+    },
+    "cellSupportState": {
+      "type": "string",
+      "enum": [
+        "METRIC_SEWER_SUPPORTED",
+        "NO_ELIGIBLE_SEWER_NEIGHBOR",
+        "SEWER_ATTRIBUTE_MISSING",
+        "GENERIC_ADJACENCY_ONLY",
+        "SELF_ONLY"
+      ]
+    },
+    "cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cell_id",
+        "eligible_geojson",
+        "relative_synthetic_network_state",
+        "sewer_attribute_available",
+        "eligible_sewer_neighbor_count",
+        "eligible_generic_neighbor_count",
+        "self_only_transition_row",
+        "cell_support_state",
+        "cell_limitation_codes"
+      ],
+      "properties": {
+        "cell_id": {"$ref": "#/$defs/cellId"},
+        "eligible_geojson": {
+          "type": "string",
+          "contentMediaType": "application/geo+json",
+          "description": "Canonical GeoJSON text copied byte-for-byte from eligible_geojson_canonical_text; clients parse this string."
+        },
+        "relative_synthetic_network_state": {"$ref": "#/$defs/decimal12Unit"},
+        "sewer_attribute_available": {"type": "boolean"},
+        "eligible_sewer_neighbor_count": {"type": "integer", "minimum": 0},
+        "eligible_generic_neighbor_count": {"type": "integer", "minimum": 0},
+        "self_only_transition_row": {"type": "boolean"},
+        "cell_support_state": {"$ref": "#/$defs/cellSupportState"},
+        "cell_limitation_codes": {"$ref": "#/$defs/cellLimitationCodes"}
+      }
+    },
+    "coordinate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["longitude", "latitude"],
+      "properties": {
+        "longitude": {"$ref": "#/$defs/decimal7"},
+        "latitude": {"$ref": "#/$defs/decimal7"}
+      }
+    },
+    "sewerLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from_cell_id", "to_cell_id", "link_class", "active_in_scenario", "metric_eligible", "schematic_from_centroid", "schematic_to_centroid", "link_limitation_codes"],
+      "properties": {
+        "from_cell_id": {"$ref": "#/$defs/cellId"},
+        "to_cell_id": {"$ref": "#/$defs/cellId"},
+        "link_class": {"const": "SYNTHETIC_SEWER_LINK"},
+        "active_in_scenario": {"const": true},
+        "metric_eligible": {"const": true},
+        "schematic_from_centroid": {"$ref": "#/$defs/coordinate"},
+        "schematic_to_centroid": {"$ref": "#/$defs/coordinate"},
+        "link_limitation_codes": {"$ref": "#/$defs/linkLimitationCodes"}
+      }
+    },
+    "genericLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from_cell_id", "to_cell_id", "link_class", "active_in_scenario", "metric_eligible", "schematic_from_centroid", "schematic_to_centroid", "link_limitation_codes"],
+      "properties": {
+        "from_cell_id": {"$ref": "#/$defs/cellId"},
+        "to_cell_id": {"$ref": "#/$defs/cellId"},
+        "link_class": {"const": "GENERIC_CELL_ADJACENCY"},
+        "active_in_scenario": {"const": true},
+        "metric_eligible": {"type": "null", "description": "Not applicable to the generic-adjacency row; a dual-class pair is represented by a separate sewer row."},
+        "schematic_from_centroid": {"$ref": "#/$defs/coordinate"},
+        "schematic_to_centroid": {"$ref": "#/$defs/coordinate"},
+        "link_limitation_codes": {"$ref": "#/$defs/linkLimitationCodes"}
+      }
+    },
+    "cellsResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "metadata", "cells"],
+      "properties": {
+        "kind": {"const": "NETWORK_REDISTRIBUTION_CELLS"},
+        "metadata": {"$ref": "#/$defs/cellsMetadata"},
+        "cells": {
+          "type": "array",
+          "minItems": 3420,
+          "maxItems": 3420,
+          "items": {"$ref": "#/$defs/cell"},
+          "x-canonical-order": "CELL_ID_SIGNED_INT64_ASCENDING"
+        }
+      }
+    },
+    "linksResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "metadata", "links"],
+      "properties": {
+        "kind": {"const": "NETWORK_REDISTRIBUTION_LINKS"},
+        "metadata": {"$ref": "#/$defs/linksMetadata"},
+        "links": {
+          "type": "array",
+          "items": {"oneOf": [{"$ref": "#/$defs/sewerLink"}, {"$ref": "#/$defs/genericLink"}]},
+          "x-canonical-order": "LINK_CLASS_THEN_FROM_CELL_SIGNED_INT64_THEN_TO_CELL_SIGNED_INT64"
+        }
+      }
+    }
+  }
+}

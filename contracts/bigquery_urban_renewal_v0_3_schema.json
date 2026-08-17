@@ -1,0 +1,23 @@
+[
+  {"name": "source_snapshot_id", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "source_snapshot_date", "type": "DATE", "mode": "REQUIRED"},
+  {"name": "source_uri", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "source_file_name", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "source_file_sha256", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "source_row_number", "type": "INTEGER", "mode": "REQUIRED"},
+  {"name": "source_row_sha256", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "renewal_record_id", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "layer_name", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "record_number", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "district", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "current_status", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "approval_date_raw", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "business_plan_approval_date_raw", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "announcement_date_raw", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "completion_year_raw", "type": "STRING", "mode": "NULLABLE"},
+  {"name": "longitude", "type": "FLOAT", "mode": "NULLABLE"},
+  {"name": "latitude", "type": "FLOAT", "mode": "NULLABLE"},
+  {"name": "phase_group", "type": "STRING", "mode": "REQUIRED"},
+  {"name": "primary_scenario_included", "type": "BOOLEAN", "mode": "REQUIRED"},
+  {"name": "quality_flags", "type": "STRING", "mode": "REPEATED"}
+]

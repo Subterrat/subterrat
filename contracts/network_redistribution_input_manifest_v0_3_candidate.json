@@ -1,0 +1,201 @@
+{
+  "input_manifest_id": "subterrat_v0_3_network_redistribution_inputs_candidate",
+  "manifest_state": "CANDIDATE_TEMPLATE_IMPLEMENTATION_ALLOWED_RUN_PROHIBITED_UNTIL_FINALIZED",
+  "project_id": "devjam26aug17tpe-1270",
+  "location": "asia-east1",
+  "finalization_policy": {
+    "finalized_manifest_required_before_any_simulation_run": true,
+    "required_action": "COPY_TEMPLATE_FILL_EVERY_selected_content_sha256_VERIFY_SELECTORS_AND_HASH_FINALIZED_BYTES",
+    "pending_hash_action": "FAIL_MATERIALIZATION",
+    "source_mutation_after_finalization_action": "FAIL_CONTENT_HASH_MISMATCH",
+    "selected_content_hash_algorithm": "SHA256",
+    "selected_content_row_serialization": "USE_contracts/network_redistribution_artifacts_v0_3_candidate.json_canonical_hash_rules",
+    "finalized_manifest_hash_role": "RUN_ID_AND_MATERIALIZATION_RECEIPT_INPUT"
+  },
+  "cell_universe": {
+    "table": "devjam26aug17tpe-1270.subterrat_curated.analysis_cells",
+    "grid_version": "taipei_county_1140318_s2_l15_v1",
+    "expected_rows": 3420,
+    "identity_field": "cell_id",
+    "required_fields": {
+      "grid_version": "STRING",
+      "cell_id": "INT64",
+      "cell_token": "STRING",
+      "centroid_longitude": "FLOAT64",
+      "centroid_latitude": "FLOAT64",
+      "eligible_geom": "GEOGRAPHY",
+      "eligible_area_m2": "FLOAT64"
+    },
+    "sewer_traversal_intersection_geometry": "eligible_geom",
+    "generic_adjacency_geometry": "eligible_geom",
+    "eligible_area_geometry": "eligible_geom",
+    "map_render_geometry": "eligible_geom",
+    "required_predicate": "grid_version = 'taipei_county_1140318_s2_l15_v1' AND eligible_area_m2 > 0 AND eligible_geom IS NOT NULL",
+    "uniqueness_assertion": "EXACTLY_ONE_ROW_PER_grid_version_cell_id_OTHERWISE_FAIL",
+    "selected_content_identity": {
+      "primary_key_fields_in_order": ["cell_id"],
+      "hashed_fields_in_order": ["grid_version", "cell_id", "cell_token", "centroid_longitude_7", "centroid_latitude_7", "eligible_area_m2_6", "eligible_geom_wkb_hex"],
+      "derived_fields": {
+        "centroid_longitude_7": "ROUND(CAST(centroid_longitude AS BIGNUMERIC), 7, ROUND_HALF_EVEN)",
+        "centroid_latitude_7": "ROUND(CAST(centroid_latitude AS BIGNUMERIC), 7, ROUND_HALF_EVEN)",
+        "eligible_area_m2_6": "ROUND(CAST(eligible_area_m2 AS BIGNUMERIC), 6, ROUND_HALF_EVEN)",
+        "eligible_geom_wkb_hex": "TO_HEX(ST_ASBINARY(eligible_geom))"
+      },
+      "selected_content_sha256": null,
+      "selected_content_sha256_state": "REQUIRED_IN_FINALIZED_MANIFEST"
+    },
+    "observed_identity_2026_08_18": {
+      "rows": 3420,
+      "distinct_cell_ids": 3420,
+      "invalid_geometry_or_area_rows": 0
+    }
+  },
+  "food_seed": {
+    "table": "devjam26aug17tpe-1270.subterrat_predictions.map_hotspot_cells_t0",
+    "freeze_id": "t0-layerwise-development-20260817-v2",
+    "expected_rows": 3420,
+    "identity_field": "cell_id",
+    "score_field": "food_score",
+    "required_fields": {
+      "cell_id": "INT64",
+      "food_score": "FLOAT64",
+      "freeze_id": "STRING",
+      "score_semantics": "STRING"
+    },
+    "required_predicate": "freeze_id = 't0-layerwise-development-20260817-v2' AND score_semantics = 'LAYER_SCORE_NOT_PROBABILITY'",
+    "uniqueness_assertion": "EXACTLY_ONE_ROW_PER_freeze_id_cell_id_OTHERWISE_FAIL",
+    "cell_set_assertion": "SELECTED_CELL_ID_SET_EXACTLY_EQUALS_cell_universe_SELECTED_CELL_ID_SET",
+    "missing_or_nonfinite_action": "FAIL_MATERIALIZATION",
+    "selected_content_identity": {
+      "primary_key_fields_in_order": ["cell_id"],
+      "hashed_fields_in_order": ["freeze_id", "cell_id", "food_score_12", "score_semantics"],
+      "derived_fields": {
+        "food_score_12": "ROUND(CAST(food_score AS BIGNUMERIC), 12, ROUND_HALF_EVEN)"
+      },
+      "selected_content_sha256": null,
+      "selected_content_sha256_state": "REQUIRED_IN_FINALIZED_MANIFEST"
+    },
+    "observed_identity_2026_08_18": {
+      "rows": 3420,
+      "distinct_cell_ids": 3420,
+      "invalid_food_rows": 0
+    }
+  },
+  "pipe_geometry": {
+    "table": "devjam26aug17tpe-1270.subterrat_curated.sanitary_pipe_segment_v0_2_candidate",
+    "source_snapshot_id": "979ee9ac61c536177f4ee929afb2fcf44313023f6ae6d3f0585a7ffd26ea0911",
+    "expected_source_rows": 198091,
+    "expected_active_nonnull_geometry_rows": 192533,
+    "identity_field": "segment_id",
+    "resource_dedup_key": [
+      "source_snapshot_id",
+      "source_resource_id",
+      "segment_id"
+    ],
+    "geometry_field": "geom_wgs84",
+    "required_fields": {
+      "source_snapshot_id": "STRING",
+      "source_resource_id": "STRING",
+      "segment_id": "STRING",
+      "geom_wgs84": "GEOGRAPHY",
+      "is_active": "BOOL",
+      "evidence_state": "STRING"
+    },
+    "source_census_predicate": "source_snapshot_id = '979ee9ac61c536177f4ee929afb2fcf44313023f6ae6d3f0585a7ffd26ea0911'",
+    "expected_source_census_rows": 198091,
+    "traversal_candidate_predicate": "is_active AND geom_wgs84 IS NOT NULL AND ST_GEOMETRYTYPE(geom_wgs84) = 'ST_LineString' AND NOT ST_ISEMPTY(geom_wgs84)",
+    "validity_contract": "BIGQUERY_GEOGRAPHY_TYPED_VALUES_ARE_VALID_INVALID_INPUT_CANNOT_BE_STORED_ST_ISVALID_IS_NOT_A_GOOGLESQL_FUNCTION",
+    "uniqueness_assertion": "EXACTLY_ONE_ROW_PER_source_snapshot_id_source_resource_id_segment_id_OTHERWISE_FAIL",
+    "selected_content_identity": {
+      "primary_key_fields_in_order": ["source_snapshot_id", "source_resource_id", "segment_id"],
+      "hashed_fields_in_order": ["source_snapshot_id", "source_resource_id", "segment_id", "is_active", "geometry_type_or_null", "geometry_empty_or_null", "geom_wgs84_wkb_hex_or_null", "evidence_state"],
+      "derived_fields": {
+        "geometry_type_or_null": "IF(geom_wgs84 IS NULL, NULL, ST_GEOMETRYTYPE(geom_wgs84))",
+        "geometry_empty_or_null": "IF(geom_wgs84 IS NULL, NULL, ST_ISEMPTY(geom_wgs84))",
+        "geom_wgs84_wkb_hex_or_null": "IF(geom_wgs84 IS NULL, NULL, TO_HEX(ST_ASBINARY(geom_wgs84)))"
+      },
+      "selected_content_sha256": null,
+      "selected_content_sha256_state": "REQUIRED_IN_FINALIZED_MANIFEST"
+    },
+    "forbidden_identity_fields": [
+      "start_node_id",
+      "end_node_id"
+    ]
+  },
+  "sewer_attribute": {
+    "table": "devjam26aug17tpe-1270.subterrat_predictions.sewer_metric_rankings_v0_2_candidate",
+    "source_snapshot_id": "979ee9ac61c536177f4ee929afb2fcf44313023f6ae6d3f0585a7ffd26ea0911",
+    "expected_rows": 17100,
+    "identity_fields": [
+      "variant_id",
+      "cell_id"
+    ],
+    "required_fields": {
+      "source_snapshot_id": "STRING",
+      "variant_id": "STRING",
+      "cell_id": "INT64",
+      "diagnostic_percentile": "FLOAT64",
+      "metric_gate_state": "STRING",
+      "evidence_state": "STRING"
+    },
+    "required_variants": [
+      "sewer_system_type",
+      "surface_elevation",
+      "connected_pipe_diameter",
+      "connected_pipe_depth",
+      "connected_pipe_age"
+    ],
+    "required_predicate": "source_snapshot_id = '979ee9ac61c536177f4ee929afb2fcf44313023f6ae6d3f0585a7ffd26ea0911' AND variant_id IN ('sewer_system_type','surface_elevation','connected_pipe_diameter','connected_pipe_depth','connected_pipe_age')",
+    "uniqueness_assertion": "EXACTLY_ONE_ROW_PER_source_snapshot_id_variant_id_cell_id_OTHERWISE_FAIL",
+    "variant_assertion": "EXACTLY_FIVE_REQUIRED_VARIANTS_AND_3420_ROWS_PER_VARIANT",
+    "cell_attribute_formula": "mean of five diagnostic_percentile values only when all five are non-null",
+    "dynamic_reweighting": false,
+    "observed_complete_case_cells": 1589,
+    "gate_state": "V0_2_FOUR_METRIC_GATES_INCOMPLETE_INTERNAL_SIMULATION_ONLY",
+    "selected_content_identity": {
+      "primary_key_fields_in_order": ["source_snapshot_id", "variant_id", "cell_id"],
+      "hashed_fields_in_order": ["source_snapshot_id", "variant_id", "cell_id", "diagnostic_percentile_12", "metric_gate_state", "evidence_state"],
+      "derived_fields": {
+        "diagnostic_percentile_12": "NULL_OR_ROUND(CAST(diagnostic_percentile AS BIGNUMERIC), 12, ROUND_HALF_EVEN)"
+      },
+      "selected_content_sha256": null,
+      "selected_content_sha256_state": "REQUIRED_IN_FINALIZED_MANIFEST"
+    }
+  },
+  "parent_v0_3_lock": {
+    "table": "devjam26aug17tpe-1270.subterrat_predictions.hotspot_scenario_lock_manifest_v0_3",
+    "identity_field": "lock_id",
+    "required_lock_id": "v0.3-internal-simulation-concordance-lock",
+    "required_predicate": "lock_id = 'v0.3-internal-simulation-concordance-lock' AND lock_status = 'LOCKED_AWAITING_ONE_SHOT_RETROSPECTIVE_CONCORDANCE' AND raw_outcome_access_before_lock = 'DENY' AND use_state = 'INTERNAL_SIMULATION_ONLY' AND evidence_state = 'NO_TRUSTED_RESULT' AND operational_use = 'PROHIBITED' AND public_release_ready = FALSE",
+    "expected_matching_rows": 1,
+    "zero_or_multiple_match_action": "FAIL_MATERIALIZATION",
+    "required_fields": [
+      "lock_id",
+      "lock_status",
+      "raw_outcome_access_before_lock",
+      "specification_git_head",
+      "review_receipt_sha256",
+      "scenario_contract_sha256",
+      "scenario_sql_sha256",
+      "urban_renewal_source_snapshot_id",
+      "use_state",
+      "evidence_state",
+      "operational_use",
+      "public_release_ready"
+    ],
+    "current_state": "PENDING_COMMITTED_PARENT_LOCK",
+    "selected_content_identity": {
+      "primary_key_fields_in_order": ["lock_id"],
+      "hashed_fields_in_order": ["lock_id", "lock_status", "raw_outcome_access_before_lock", "specification_git_head", "review_receipt_sha256", "scenario_contract_sha256", "scenario_sql_sha256", "urban_renewal_source_snapshot_id", "use_state", "evidence_state", "operational_use", "public_release_ready"],
+      "selected_content_sha256": null,
+      "selected_content_sha256_state": "REQUIRED_IN_FINALIZED_MANIFEST_AFTER_PARENT_LOCK_EXISTS"
+    }
+  },
+  "forbidden_sources": [
+    "Rat Radar raw rows",
+    "Rat Radar aggregates",
+    "retrospective concordance outputs",
+    "Google Places or Maps content",
+    "urban renewal rows as a network transition input"
+  ]
+}

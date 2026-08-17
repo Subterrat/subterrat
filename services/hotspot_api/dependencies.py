@@ -7,6 +7,10 @@ from fastapi import Depends
 from services.hotspot_api.bigquery_gateway import BigQueryGateway
 from services.hotspot_api.config import Settings, get_settings
 from services.hotspot_api.repositories.cells_repo import CellsRepository
+from services.hotspot_api.repositories.network_redistribution_repo import (
+    NetworkRedistributionRepository,
+)
+from services.hotspot_api.repositories.v03_cells_repo import V03CellsRepository
 from services.hotspot_api.repositories.releases_repo import ReleasesRepository
 
 
@@ -33,3 +37,23 @@ def get_cells_repository(
     settings: Settings = Depends(get_settings),
 ) -> CellsRepository:
     return CellsRepository(gateway, settings.table_ref)
+
+
+def get_v03_cells_repository(
+    gateway: BigQueryGateway = Depends(get_bigquery_gateway),
+    settings: Settings = Depends(get_settings),
+) -> V03CellsRepository:
+    return V03CellsRepository(gateway, settings.v03_table_ref)
+
+
+def get_network_redistribution_repository(
+    gateway: BigQueryGateway = Depends(get_bigquery_gateway),
+    settings: Settings = Depends(get_settings),
+) -> NetworkRedistributionRepository:
+    return NetworkRedistributionRepository(
+        gateway,
+        settings.network_map_table_ref,
+        settings.network_state_table_ref,
+        settings.network_links_table_ref,
+        settings.network_receipt_table_ref,
+    )

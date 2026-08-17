@@ -1,0 +1,167 @@
+{
+  "artifact_schema_contract_id": "subterrat_v0_3_network_redistribution_artifacts_candidate",
+  "schema_version": "0.3.0-candidate",
+  "run_id_ordered_fields": [
+    "contract_hash",
+    "finalized_input_manifest_hash",
+    "sql_bundle_hash",
+    "code_revision",
+    "cell_universe_selected_content_sha256",
+    "food_seed_selected_content_sha256",
+    "pipe_geometry_selected_content_sha256",
+    "sewer_attribute_selected_content_sha256",
+    "parent_v0_3_lock_selected_content_sha256"
+  ],
+  "run_id_formula": "LOWER_HEX_SHA256(UTF8_VALUES_IN_run_id_ordered_fields_JOINED_BY_U+001F_WITH_NO_TRAILING_SEPARATOR)",
+  "canonical_hash": {
+    "algorithm": "SHA256",
+    "row_sort": "PRIMARY_KEY_FIELDS_IN_DECLARED_ORDER_ASCENDING_NULLS_FIRST",
+    "field_order": "FIELDS_ARRAY_ORDER_BELOW",
+    "field_separator": "U+001F",
+    "row_separator": "U+000A",
+    "null_encoding": "U+0000",
+    "string_encoding": "TO_JSON_STRING_SCALAR",
+    "integer_encoding": "BASE10_NO_LEADING_ZERO_EXCEPT_ZERO",
+    "boolean_encoding": "true_or_false_lowercase",
+    "decimal_encoding": "FIXED_DECLARED_SCALE_ASCII_NO_EXPONENT_NEGATIVE_ZERO_AS_POSITIVE_ZERO",
+    "array_string_encoding": "LEXICOGRAPHIC_ASCENDING_UNIQUE_ELEMENTS_EACH_TO_JSON_STRING_JOINED_WITH_U+001E",
+    "geography_encoding": "NO_GEOGRAPHY_FIELD_IS_HASHED_OR_SERVED_CANONICAL_GEOJSON_TEXT_IS_HASHED_AS_STRING",
+    "run_level_metadata_in_hash": true
+  },
+  "quality_registry": {
+    "vertex_universe": "ALL_3420_FROZEN_CELLS_FOR_EVERY_GRAPH_SCOPE_ISOLATES_ARE_SINGLE_VERTEX_COMPONENTS",
+    "connected_component_id": "MINIMUM_SIGNED_INT64_CELL_ID_IN_COMPONENT",
+    "quality_record_id_formula": "metric_name U+001F graph_scope U+001F scenario_id_or_empty U+001F abstract_iteration_two_digits_or_empty U+001F dimension_key",
+    "source_segment_terminal_classification_precedence": [
+      "SOURCE_ROW_INACTIVE",
+      "GEOMETRY_NULL",
+      "GEOMETRY_TYPE_UNSUPPORTED",
+      "GEOMETRY_EMPTY_OR_INVALID",
+      "COLLAPSED_ELEMENTARY_EDGE",
+      "OUTSIDE_OR_GAPPED_CELL_UNIVERSE",
+      "POSITIVE_LENGTH_BOUNDARY_OVERLAP",
+      "NONUNIQUE_TRAVERSAL",
+      "ADMITTED"
+    ],
+    "source_segment_classification_rule": "FIRST_MATCH_IN_PRECEDENCE_EXACTLY_ONE_TERMINAL_CLASSIFICATION_PER_SOURCE_CENSUS_ROW",
+    "records": [
+      {"metric_name": "graph_link_count", "graph_scope": "EACH_OF_FULL_BINARY_METRIC_ELIGIBLE_N2_UNION", "scenario": "NOT_APPLICABLE", "iteration": "NOT_APPLICABLE", "dimension_key": "EMPTY", "value": "integer_value", "value_formula": "COUNT_CANONICAL_UNIQUE_UNORDERED_LINK_ROWS_IN_GRAPH_SCOPE", "canonical_input_fields": ["link_class", "from_cell_id", "to_cell_id", "metric_eligible"], "rounding_or_integer_rule": "EXACT_INT64", "required_rows": 3},
+      {"metric_name": "neighbor_degree_by_cell", "graph_scope": "EACH_OF_FULL_BINARY_METRIC_ELIGIBLE_N2_UNION", "scenario": "NOT_APPLICABLE", "iteration": "NOT_APPLICABLE", "dimension_key": "cell_id=<canonical_signed_int64>", "value": "integer_value", "value_formula": "COUNT_DISTINCT_OTHER_ENDPOINT_FOR_CELL_IN_GRAPH_SCOPE_ZERO_FOR_ISOLATE", "canonical_input_fields": ["cell_id", "from_cell_id", "to_cell_id"], "rounding_or_integer_rule": "EXACT_INT64", "required_rows": 10260},
+      {"metric_name": "connected_component_count", "graph_scope": "EACH_OF_FULL_BINARY_METRIC_ELIGIBLE_N2_UNION", "scenario": "NOT_APPLICABLE", "iteration": "NOT_APPLICABLE", "dimension_key": "EMPTY", "value": "integer_value", "value_formula": "COUNT_DISTINCT_component_id_OVER_ALL_3420_CELLS", "canonical_input_fields": ["cell_id", "component_id"], "rounding_or_integer_rule": "EXACT_INT64", "required_rows": 3},
+      {"metric_name": "largest_component_cell_share", "graph_scope": "EACH_OF_FULL_BINARY_METRIC_ELIGIBLE_N2_UNION", "scenario": "NOT_APPLICABLE", "iteration": "NOT_APPLICABLE", "dimension_key": "EMPTY", "value": "decimal_value", "value_formula": "ROUND(CAST(MAX_COMPONENT_CELL_COUNT AS BIGNUMERIC)/BIGNUMERIC_3420,30,ROUND_HALF_EVEN)", "canonical_input_fields": ["component_id", "cell_id"], "rounding_or_integer_rule": "BIGNUMERIC_SCALE_30_ROUND_HALF_EVEN", "required_rows": 3},
+      {"metric_name": "source_mass_by_component", "graph_scope": "EACH_OF_FULL_BINARY_METRIC_ELIGIBLE_N2_UNION", "scenario": "NOT_APPLICABLE", "iteration": "NOT_APPLICABLE", "dimension_key": "component_id=<minimum_canonical_signed_int64_cell_id>", "value": "decimal_value", "value_formula": "ROUND(SUM(stored_source_seed_FOR_CELLS_IN_COMPONENT),30,ROUND_HALF_EVEN)", "canonical_input_fields": ["component_id", "cell_id", "stored_source_seed"], "rounding_or_integer_rule": "BIGNUMERIC_SCALE_30_ROUND_HALF_EVEN", "required_rows": "EXACTLY_ONE_PER_COMPONENT_PER_GRAPH_SCOPE"},
+      {"metric_name": "self_only_source_mass", "graph_scope": "NOT_APPLICABLE", "scenario": "EACH_LOCKED_SCENARIO", "iteration": "NOT_APPLICABLE", "dimension_key": "EMPTY", "value": "decimal_value", "value_formula": "ROUND(SUM(stored_source_seed_WHERE_SELECTED_SCENARIO_STORED_TRANSITION_ROW_HAS_ONLY_SELF_AND_SELF_VALUE_EQUALS_1),30,ROUND_HALF_EVEN)", "canonical_input_fields": ["scenario_id", "cell_id", "stored_source_seed", "to_cell_id", "transition_value"], "rounding_or_integer_rule": "BIGNUMERIC_SCALE_30_ROUND_HALF_EVEN", "required_rows": 3},
+      {"metric_name": "n0_n1_metric_eligible_edge_set_hash_equal", "graph_scope": "METRIC_ELIGIBLE", "scenario": "NOT_APPLICABLE", "iteration": "NOT_APPLICABLE", "dimension_key": "EMPTY", "value": "pass_bool", "value_formula": "CANONICAL_METRIC_ELIGIBLE_UNORDERED_EDGE_SET_SHA256_n0_EQUALS_n1", "canonical_input_fields": ["from_cell_id", "to_cell_id"], "rounding_or_integer_rule": "EXACT_BOOL", "required_rows": 1},
+      {"metric_name": "endpoint_metric_missingness_excluded_link_count", "graph_scope": "FULL_BINARY", "scenario": "NOT_APPLICABLE", "iteration": "NOT_APPLICABLE", "dimension_key": "EMPTY", "value": "integer_value", "value_formula": "COUNT_UNIQUE_FULL_BINARY_SEWER_UNORDERED_LINKS_WHERE_EITHER_ENDPOINT_sewer_attribute_index_IS_NULL", "canonical_input_fields": ["from_cell_id", "to_cell_id", "from_sewer_attribute_index", "to_sewer_attribute_index"], "rounding_or_integer_rule": "EXACT_INT64", "required_rows": 1},
+      {"metric_name": "within_cell_admitted_segment_count", "graph_scope": "FULL_BINARY", "scenario": "NOT_APPLICABLE", "iteration": "NOT_APPLICABLE", "dimension_key": "EMPTY", "value": "integer_value", "value_formula": "COUNT_SOURCE_CENSUS_ROWS_CLASSIFIED_ADMITTED_WITH_EXACTLY_ONE_DISTINCT_TRAVERSED_CELL", "canonical_input_fields": ["source_snapshot_id", "source_resource_id", "segment_id", "terminal_classification", "distinct_traversed_cell_count"], "rounding_or_integer_rule": "EXACT_INT64", "required_rows": 1},
+      {"metric_name": "parallel_source_segment_duplicate_excess_total", "graph_scope": "FULL_BINARY", "scenario": "NOT_APPLICABLE", "iteration": "NOT_APPLICABLE", "dimension_key": "EMPTY", "value": "integer_value", "value_formula": "SUM(GREATEST(parallel_segment_count_MINUS_1,0))_OVER_UNIQUE_FULL_BINARY_SEWER_LINKS", "canonical_input_fields": ["from_cell_id", "to_cell_id", "parallel_segment_count"], "rounding_or_integer_rule": "EXACT_INT64", "required_rows": 1},
+      {"metric_name": "source_segment_terminal_classification_count", "graph_scope": "NOT_APPLICABLE", "scenario": "NOT_APPLICABLE", "iteration": "NOT_APPLICABLE", "dimension_key": "classification=<terminal_enum>", "value": "integer_value", "value_formula": "COUNT_SOURCE_CENSUS_ROWS_WITH_EXACT_TERMINAL_CLASSIFICATION", "canonical_input_fields": ["source_snapshot_id", "source_resource_id", "segment_id", "terminal_classification"], "rounding_or_integer_rule": "EXACT_INT64", "required_rows": 9},
+      {"metric_name": "internal_cell_connectivity_state", "graph_scope": "NOT_APPLICABLE", "scenario": "NOT_APPLICABLE", "iteration": "NOT_APPLICABLE", "dimension_key": "EMPTY", "value": "string_value", "value_formula": "CONSTANT_NOT_IDENTIFIABLE_WITHOUT_ADDITIONAL_JUNCTION_MODEL", "canonical_input_fields": [], "rounding_or_integer_rule": "EXACT_STRING_NOT_IDENTIFIABLE_WITHOUT_ADDITIONAL_JUNCTION_MODEL", "required_rows": 1},
+      {"metric_name": "transition_row_sum_max_absolute_residual", "graph_scope": "NOT_APPLICABLE", "scenario": "EACH_LOCKED_SCENARIO", "iteration": "NOT_APPLICABLE", "dimension_key": "EMPTY", "value": "decimal_value", "value_formula": "ROUND(MAX_from_cell(ABS(SUM_to_cell(stored_transition_value)-BIGNUMERIC_1)),30,ROUND_HALF_EVEN)", "canonical_input_fields": ["scenario_id", "from_cell_id", "to_cell_id", "transition_value"], "rounding_or_integer_rule": "BIGNUMERIC_SCALE_30_ROUND_HALF_EVEN", "required_rows": 3},
+      {"metric_name": "state_mass_absolute_residual", "graph_scope": "NOT_APPLICABLE", "scenario": "EACH_LOCKED_SCENARIO", "iteration": "EACH_0_TO_8", "dimension_key": "EMPTY", "value": "decimal_value", "value_formula": "ROUND(ABS(SUM_cell(stored_unit_mass_state)-BIGNUMERIC_1),30,ROUND_HALF_EVEN)", "canonical_input_fields": ["scenario_id", "abstract_iteration", "cell_id", "unit_mass_state"], "rounding_or_integer_rule": "BIGNUMERIC_SCALE_30_ROUND_HALF_EVEN", "required_rows": 27},
+      {"metric_name": "recurrence_max_absolute_residual", "graph_scope": "NOT_APPLICABLE", "scenario": "EACH_LOCKED_SCENARIO", "iteration": "EACH_1_TO_8", "dimension_key": "EMPTY", "value": "decimal_value", "value_formula": "ROUND(MAX_cell(ABS(stored_unit_mass_state_MINUS_CANONICAL_RECOMPUTED_STORED_STATE)),30,ROUND_HALF_EVEN)", "canonical_input_fields": ["scenario_id", "abstract_iteration", "cell_id", "unit_mass_state", "source_seed", "transition_value", "prior_unit_mass_state"], "rounding_or_integer_rule": "BIGNUMERIC_SCALE_30_ROUND_HALF_EVEN", "required_rows": 24}
+    ]
+  },
+  "table_contracts": [
+    {
+      "table": "subterrat_features.synthetic_network_cell_links_v0_3_candidate",
+      "primary_key_fields_in_order": ["run_id", "link_class", "from_cell_id", "to_cell_id"],
+      "constraints": ["from_cell_id < to_cell_id", "one row per unordered pair and link_class"],
+      "fields": [
+        {"name": "run_id", "type": "STRING", "nullable": false},
+        {"name": "link_class", "type": "STRING_ENUM_SYNTHETIC_SEWER_LINK_OR_GENERIC_CELL_ADJACENCY", "nullable": false},
+        {"name": "from_cell_id", "type": "INT64", "nullable": false},
+        {"name": "to_cell_id", "type": "INT64", "nullable": false},
+        {"name": "metric_eligible", "type": "BOOL", "nullable": true, "null_rule": "NULL_ONLY_FOR_GENERIC_CELL_ADJACENCY"},
+        {"name": "route_weight", "type": "BIGNUMERIC", "scale": 12, "nullable": true, "null_rule": "NULL_FOR_GENERIC_OR_METRIC_INELIGIBLE_SEWER_LINK"},
+        {"name": "parallel_segment_count", "type": "INT64", "nullable": false, "generic_value": 0},
+        {"name": "distinct_source_resource_count", "type": "INT64", "nullable": false, "generic_value": 0},
+        {"name": "total_intersected_length_m", "type": "BIGNUMERIC", "scale": 6, "nullable": false, "generic_value": "0.000000"},
+        {"name": "link_limitation_codes", "type": "ARRAY<STRING>", "nullable": false, "order": "LEXICOGRAPHIC_ASCENDING_UNIQUE"},
+        {"name": "finalized_input_manifest_hash", "type": "STRING_LOWER_HEX_64", "nullable": false}
+      ]
+    },
+    {
+      "table": "subterrat_simulations.synthetic_network_transitions_v0_3_internal_simulation",
+      "primary_key_fields_in_order": ["run_id", "scenario_id", "from_cell_id", "to_cell_id"],
+      "fields": [
+        {"name": "run_id", "type": "STRING", "nullable": false},
+        {"name": "scenario_id", "type": "STRING_LOCKED_SCENARIO_ENUM", "nullable": false},
+        {"name": "from_cell_id", "type": "INT64", "nullable": false},
+        {"name": "to_cell_id", "type": "INT64", "nullable": false},
+        {"name": "transition_value", "type": "BIGNUMERIC", "scale": 24, "nullable": false},
+        {"name": "self_transition", "type": "BOOL", "nullable": false},
+        {"name": "self_only_transition_row", "type": "BOOL", "nullable": false}
+      ]
+    },
+    {
+      "table": "subterrat_simulations.synthetic_network_states_v0_3_internal_simulation",
+      "primary_key_fields_in_order": ["run_id", "scenario_id", "abstract_iteration", "cell_id"],
+      "fields": [
+        {"name": "run_id", "type": "STRING", "nullable": false},
+        {"name": "scenario_id", "type": "STRING_LOCKED_SCENARIO_ENUM", "nullable": false},
+        {"name": "abstract_iteration", "type": "INT64_0_TO_8", "nullable": false},
+        {"name": "cell_id", "type": "INT64", "nullable": false},
+        {"name": "source_seed", "type": "BIGNUMERIC", "scale": 24, "nullable": false},
+        {"name": "unit_mass_state", "type": "BIGNUMERIC", "scale": 24, "nullable": false},
+        {"name": "display_scale_max", "type": "BIGNUMERIC", "scale": 24, "nullable": false},
+        {"name": "relative_synthetic_network_state", "type": "BIGNUMERIC", "scale": 12, "nullable": false},
+        {"name": "sewer_attribute_available", "type": "BOOL", "nullable": false},
+        {"name": "eligible_sewer_neighbor_count", "type": "INT64", "nullable": false},
+        {"name": "eligible_generic_neighbor_count", "type": "INT64", "nullable": false},
+        {"name": "self_only_transition_row", "type": "BOOL", "nullable": false},
+        {"name": "cell_support_state", "type": "STRING_CELL_SUPPORT_ENUM", "nullable": false},
+        {"name": "cell_limitation_codes", "type": "ARRAY<STRING>", "nullable": false, "order": "LEXICOGRAPHIC_ASCENDING_UNIQUE"}
+      ]
+    },
+    {
+      "table": "subterrat_simulations.synthetic_network_quality_v0_3_internal_simulation",
+      "primary_key_fields_in_order": ["run_id", "quality_record_id"],
+      "typed_value_constraint": "EXACTLY_ONE_OF_integer_value_decimal_value_string_value_pass_bool_IS_NON_NULL",
+      "fields": [
+        {"name": "run_id", "type": "STRING", "nullable": false},
+        {"name": "quality_record_id", "type": "STRING_DETERMINISTIC_FROM_DIMENSIONS", "nullable": false},
+        {"name": "metric_name", "type": "STRING_REQUIRED_GRAPH_OR_NUMERIC_QA_ENUM", "nullable": false},
+        {"name": "graph_scope", "type": "STRING_ENUM_FULL_BINARY_OR_METRIC_ELIGIBLE_OR_N2_UNION_OR_NOT_APPLICABLE", "nullable": false},
+        {"name": "scenario_id", "type": "STRING_LOCKED_SCENARIO_ENUM", "nullable": true},
+        {"name": "abstract_iteration", "type": "INT64_0_TO_8", "nullable": true},
+        {"name": "dimension_key", "type": "STRING_EMPTY_WHEN_NOT_APPLICABLE", "nullable": false},
+        {"name": "integer_value", "type": "INT64", "nullable": true},
+        {"name": "decimal_value", "type": "BIGNUMERIC", "scale": 30, "nullable": true},
+        {"name": "string_value", "type": "STRING", "nullable": true},
+        {"name": "pass_bool", "type": "BOOL", "nullable": true}
+      ]
+    },
+    {
+      "table": "subterrat_simulations.map_synthetic_network_cells_v0_3_internal_simulation",
+      "primary_key_fields_in_order": ["run_id", "scenario_id", "abstract_iteration", "cell_id"],
+      "fields": [
+        {"name": "run_id", "type": "STRING", "nullable": false},
+        {"name": "scenario_id", "type": "STRING_LOCKED_SCENARIO_ENUM", "nullable": false},
+        {"name": "abstract_iteration", "type": "INT64_0_TO_8", "nullable": false},
+        {"name": "cell_id", "type": "INT64", "nullable": false},
+        {"name": "eligible_geojson_canonical_text", "type": "STRING_FROM_ST_ASGEOJSON_ELIGIBLE_GEOM", "nullable": false},
+        {"name": "relative_synthetic_network_state", "type": "BIGNUMERIC", "scale": 12, "nullable": false},
+        {"name": "cell_support_state", "type": "STRING_CELL_SUPPORT_ENUM", "nullable": false},
+        {"name": "cell_limitation_codes", "type": "ARRAY<STRING>", "nullable": false, "order": "LEXICOGRAPHIC_ASCENDING_UNIQUE"}
+      ]
+    },
+    {
+      "table": "subterrat_simulations.schematic_cell_links_v0_3_internal_simulation",
+      "primary_key_fields_in_order": ["run_id", "scenario_id", "link_class", "from_cell_id", "to_cell_id"],
+      "fields": [
+        {"name": "run_id", "type": "STRING", "nullable": false},
+        {"name": "scenario_id", "type": "STRING_LOCKED_SCENARIO_ENUM", "nullable": false},
+        {"name": "link_class", "type": "STRING_ENUM_SYNTHETIC_SEWER_LINK_OR_GENERIC_CELL_ADJACENCY", "nullable": false},
+        {"name": "from_cell_id", "type": "INT64", "nullable": false},
+        {"name": "to_cell_id", "type": "INT64", "nullable": false},
+        {"name": "metric_eligible", "type": "BOOL", "nullable": true, "null_rule": "NULL_FOR_GENERIC_CELL_ADJACENCY_TRUE_FOR_RETURNED_SEWER_LINK"},
+        {"name": "from_longitude", "type": "BIGNUMERIC", "scale": 7, "nullable": false},
+        {"name": "from_latitude", "type": "BIGNUMERIC", "scale": 7, "nullable": false},
+        {"name": "to_longitude", "type": "BIGNUMERIC", "scale": 7, "nullable": false},
+        {"name": "to_latitude", "type": "BIGNUMERIC", "scale": 7, "nullable": false},
+        {"name": "link_limitation_codes", "type": "ARRAY<STRING>", "nullable": false, "order": "LEXICOGRAPHIC_ASCENDING_UNIQUE"}
+      ]
+    }
+  ]
+}

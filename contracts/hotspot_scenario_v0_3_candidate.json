@@ -1,0 +1,184 @@
+{
+  "contract_id": "subterrat_v0_3_blocked_internal_simulation",
+  "parent_versions": [
+    "layerwise_online_v0_1",
+    "sewer_metric_candidates_v0_2"
+  ],
+  "version_status": "GPT_PRO_REVISED_AWAITING_COMMITTED_SPECIFICATION_LOCK",
+  "review_verdict": "REVISE_BEFORE_SIMULATION",
+  "model_kind": "DETERMINISTIC_ORDINAL_INTERNAL_SIMULATION_NOT_PROBABILITY",
+  "claim_scope": "outcome_blinded_internal_spatial_comparison_only",
+  "state_contract": {
+    "specification_state": "PENDING_COMMITTED_LOCK",
+    "use_state": "INTERNAL_SIMULATION_ONLY",
+    "evidence_state": "NO_TRUSTED_RESULT",
+    "operational_use": "PROHIBITED"
+  },
+  "outcome_policy": {
+    "rat_radar_role": "ONE_SHOT_POST_LOCK_RETROSPECTIVE_REPORT_LOCATION_CONCORDANCE",
+    "component_attribution_allowed": false,
+    "existing_889_reports_allowed_for_selection_or_tuning": false,
+    "forbidden_uses": [
+      "feature_selection",
+      "direction_selection",
+      "radius_selection",
+      "weight_tuning",
+      "model_selection",
+      "training",
+      "calibration"
+    ]
+  },
+  "feature_groups": [
+    {
+      "group_id": "food_market",
+      "source_variant": "food_market_only",
+      "group_weight": 0.3333333333333333,
+      "state": "REUSE_FROZEN_V0_1_UNCHANGED"
+    },
+    {
+      "group_id": "sewer_attribute_index",
+      "source_variant": "sewer_attribute_index_v0_2_complete_case",
+      "group_weight": 0.3333333333333333,
+      "within_group_rule": "arithmetic mean of five monotone empirical percentiles on complete-case cells",
+      "within_group_metric_weight": 0.2,
+      "effective_each_metric_weight": 0.06666666666666667,
+      "state": "BLOCKED_PENDING_ALL_FIVE_V0_2_METRIC_GATES",
+      "publication_gate": "all five v0.2 metric gates must pass in the same analysis scope"
+    },
+    {
+      "group_id": "approved_rebuilding_admin_site",
+      "source_variant": "approved_rebuilding_admin_site_cell_footprint_buffer_150m",
+      "group_weight": 0.3333333333333333,
+      "state": "BLOCKED_SOURCE_REUSE_TAXONOMY_AND_TEMPORAL_MEANING_INCOMPLETE"
+    }
+  ],
+  "component_transformations": {
+    "food_market": "reuse frozen v0.1 score without refitting",
+    "sewer_pipe_age": "BigQuery PERCENT_RANK ordered by raw pipe age ascending",
+    "sewer_depth": "BigQuery PERCENT_RANK ordered by raw depth descending so lower raw values receive higher scores",
+    "sewer_pipe_diameter": "BigQuery PERCENT_RANK ordered by raw diameter descending so lower raw values receive higher scores",
+    "sewer_system_type": "BigQuery PERCENT_RANK ordered by frozen system-type diagnostic value ascending",
+    "sewer_elevation": "BigQuery PERCENT_RANK ordered by raw elevation ascending so higher raw values receive higher scores",
+    "approved_rebuilding_admin_site": "count source-site keys within the registered cell-footprint buffer, then BigQuery PERCENT_RANK by count ascending; zero counts are explicitly assigned zero"
+  },
+  "urban_renewal_source": {
+    "repository_path": "臺北市都市更新地圖_都更資料.csv",
+    "sha256": "b1743a3d63105c5d1ea25251e1d881825c40ef7a905d902ebd0d455685c9cde2",
+    "source_owner": "財團法人都市更新研究發展基金會",
+    "source_page": "https://www.ur.org.tw/classroom/map_view/11",
+    "embedded_google_my_maps_id": "1HIJwAuZc21A7FnoPBaIWPARkF7g",
+    "observed_rows": 2365,
+    "valid_taipei_coordinate_rows": 2365,
+    "source_snapshot_id": "f31369ef4f27e6028db450051550e52f45b43f3f4e8f723ae9c50ac4ff0b1f6e",
+    "source_reuse_license_state": "BLOCKED_NO_EXPLICIT_DATA_REUSE_LICENSE_FOUND",
+    "source_completeness_state": "BLOCKED_NO_COMPLETENESS_STATEMENT_FOUND",
+    "status_taxonomy_state": "BLOCKED_PROVIDER_FIELD_DICTIONARY_NOT_FOUND",
+    "temporal_meaning_state": "BLOCKED_ADMIN_STATUS_DOES_NOT_ESTABLISH_PHYSICAL_WORK_TIMING",
+    "construct_boundary": "an administrative redevelopment pipeline proxy, not evidence of physical disturbance, construction activity, abandoned-building density, or rat displacement",
+    "primary_inclusion": {
+      "layer_prefix": "已核定重建更新事業-",
+      "included_statuses": [
+        "核定",
+        "已核定",
+        "權變審議",
+        "權變核定",
+        "施工中",
+        "施工",
+        "權利變換審查"
+      ],
+      "source_rows": 250,
+      "unique_source_record_numbers": 248,
+      "unique_exact_coordinates": 249,
+      "site_key_source_field": "編號",
+      "site_key_semantics": "PROVIDER_UNDOCUMENTED_ADMINISTRATIVE_SITE_KEY"
+    },
+    "pre_review_live_analysis_cell_match": {
+      "source_rows": 250,
+      "matched_source_rows_at_0m": 249,
+      "matched_source_rows_at_150m": 249,
+      "matched_source_rows_at_300m": 249,
+      "unmatched_source_row_summary": "one Beitou approved record remains outside eligible analysis-cell geometry at all registered radii"
+    },
+    "live_admin_site_analysis_cell_match": {
+      "administrative_sites": 248,
+      "matched_sites_at_0m": 247,
+      "matched_sites_at_150m": 247,
+      "matched_sites_at_300m": 247,
+      "unmatched_sites_at_each_window": 1
+    },
+    "excluded_primary_groups": {
+      "completed": 347,
+      "approved_project_unknown_status": 79,
+      "planning_or_designation": 1604,
+      "government_led_unknown_phase": 85
+    }
+  },
+  "spatial_scenario": {
+    "support_semantics": "cell_footprint_buffer",
+    "primary_variant": "approved_rebuilding_admin_site_cell_footprint_buffer_150m",
+    "primary_rule": "count distinct administrative site keys whose WGS84 BigQuery GEOGRAPHY representative point has ST_DWITHIN distance at most 150 metres from the eligible cell polygon",
+    "distance_engine": "BigQuery GEOGRAPHY ST_DWITHIN in metres",
+    "primary_analysis_window_m": 150,
+    "sensitivity_analysis_windows_m": [0, 300],
+    "radius_claim_boundary": "a preregistered local analysis window over cell footprints, not a diffusion, displacement, home-range, or biological movement parameter",
+    "biological_claim_allowed": false
+  },
+  "score_rule": {
+    "primary_scenario_id": "v0_3_equal_group_internal_simulation_r150",
+    "formula": "(food_market + sewer_attribute_index + approved_rebuilding_admin_site_cell_footprint_buffer_150m) / 3",
+    "missing_group_action": "NULL_NOT_DYNAMIC_REWEIGHT",
+    "weight_source": "PREREGISTERED_EQUAL_GROUP_ASSUMPTION_NOT_OUTCOME_FITTED",
+    "score_semantics": "ORDINAL_INTERNAL_SIMULATION_INDEX_NOT_PROBABILITY"
+  },
+  "comparison_variants": [
+    "food_market_only_v0_1",
+    "sewer_system_type_only_v0_1",
+    "sewer_attribute_index_v0_2_complete_case",
+    "approved_rebuilding_admin_site_cell_footprint_buffer_0m",
+    "approved_rebuilding_admin_site_cell_footprint_buffer_150m",
+    "approved_rebuilding_admin_site_cell_footprint_buffer_300m",
+    "v0_3_equal_group_internal_simulation_r150"
+  ],
+  "rank_support": {
+    "rule": "complete_case_only",
+    "field_name": "rank_within_scoreable_support",
+    "citywide_reranking_allowed": false
+  },
+  "selection": {
+    "primary": "preregistered_selected_scenario_area_near_10_percent_total_taipei_eligible_area",
+    "tie_policy": "INCLUDE_ALL_THRESHOLD_TIES_AND_REPORT_ACTUAL_AREA_SHARE",
+    "sensitivity_area_shares": [0.05, 0.2]
+  },
+  "concordance_evaluation": {
+    "evaluation_kind": "ONE_SHOT_POST_LOCK_RETROSPECTIVE_REPORT_LOCATION_CONCORDANCE",
+    "primary_citywide_comparison": "compare each map as delivered, including its unscored support",
+    "secondary_common_support_comparison": "rerank frozen food v0.1 on the exact v0.3 scoreable support",
+    "primary_metrics": [
+      "report_overlap_fraction",
+      "report_overlap_to_area_ratio",
+      "difference_in_report_overlap_vs_food_v0_1",
+      "unscored_report_fraction"
+    ],
+    "secondary_descriptive_metrics": [
+      "top_area_jaccard_vs_food_v0_1",
+      "rank_correlation_on_common_scored_cells"
+    ],
+    "selection_from_results_allowed": false,
+    "component_attribution_allowed": false
+  },
+  "publication_policy": {
+    "serving_table": "subterrat_predictions.map_hotspot_cells_v0_3_internal_simulation",
+    "public_release_allowed_now": false,
+    "operational_use_allowed_now": false,
+    "required_limitation_codes": [
+      "NO_TRUSTED_RESULT",
+      "OPERATIONAL_USE_PROHIBITED",
+      "V0_2_SEWER_GATES_INCOMPLETE",
+      "URBAN_RENEWAL_SOURCE_REUSE_LICENSE_INCOMPLETE",
+      "URBAN_RENEWAL_STATUS_TAXONOMY_AND_TEMPORAL_MEANING_INCOMPLETE",
+      "URBAN_RENEWAL_SOURCE_RECORD_NUMBER_SEMANTICS_UNDOCUMENTED",
+      "URBAN_RENEWAL_ADMIN_SITE_COVERAGE_247_OF_248",
+      "ORDINAL_SIMULATION_INDEX_NOT_PROBABILITY"
+    ]
+  }
+}

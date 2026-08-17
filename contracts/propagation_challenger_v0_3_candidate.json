@@ -1,0 +1,349 @@
+{
+  "contract_id": "subterrat_v0_3_synthetic_network_redistribution_candidate",
+  "version_status": "APPROVED_FOR_INTERNAL_IMPLEMENTATION_NO_TRUSTED_RESULT",
+  "historical_working_name": "v0_3_propagation_challenger",
+  "parent_scenario_id": "v0_3_equal_group_internal_simulation_r150",
+  "model_kind": "DETERMINISTIC_SYNTHETIC_NETWORK_REDISTRIBUTION",
+  "input_manifest_id": "subterrat_v0_3_network_redistribution_inputs_candidate",
+  "input_manifest_path": "contracts/network_redistribution_input_manifest_v0_3_candidate.json",
+  "input_manifest_candidate_sha256": "1ef85ce04860d36f2104b68674281b9c71cf85506336d9f0bec70dca0b7d6a7b",
+  "finalized_input_manifest_policy": "REQUIRED_BEFORE_RUN_ALL_SELECTED_CONTENT_HASHES_NON_NULL_FINALIZED_BYTES_HASHED_AND_USED_IN_RUN_ID",
+  "artifact_schema_contract_path": "contracts/network_redistribution_artifacts_v0_3_candidate.json",
+  "artifact_schema_contract_sha256": "72e7fe0248d2540cb292923af10221f2d9e34ad9da0c1ccfc21cda694d0d3a65",
+  "api_schema_contract_path": "contracts/network_redistribution_api_v0_3.schema.json",
+  "api_schema_contract_sha256": "9fe6cd67915b10bc6579eccfd9fbe9a9dd2cd844d8963326f8dacf01614a7bae",
+  "use_state": "INTERNAL_SIMULATION_ONLY",
+  "evidence_state": "NO_TRUSTED_RESULT",
+  "operational_use": "PROHIBITED",
+  "output_semantics": {
+    "primary_output": "relative_synthetic_network_state",
+    "primary_output_formula": "unit_mass_state / locked_run_global_display_scale_max",
+    "normalization_scope": "LOCKED_RUN_GLOBAL_ALL_SCENARIOS_AND_ITERATIONS",
+    "calibrated_probability": null,
+    "forbidden_claims": [
+      "rat_presence_probability",
+      "rat_population_density",
+      "biological_diffusion_rate",
+      "calendar_time_forecast",
+      "construction_disturbance_effect",
+      "field_validated_movement",
+      "sewer_flow_or_capacity",
+      "migration_corridor"
+    ]
+  },
+  "outcome_policy": {
+    "rat_radar_role": "POST_LOCK_CONCORDANCE_ONLY",
+    "existing_889_reports_allowed_for_parameter_or_scenario_selection": false,
+    "forbidden_uses": [
+      "source_selection",
+      "edge_selection",
+      "traversal_rule_selection",
+      "transition_weight_selection",
+      "continuation_parameter_selection",
+      "iteration_count_selection",
+      "scenario_selection",
+      "display_scale_selection",
+      "training",
+      "calibration"
+    ]
+  },
+  "analysis_graph": {
+    "state_unit": "S2_LEVEL_15_ANALYSIS_CELL",
+    "graph_semantics": "COARSE_SYNTHETIC_CELL_LINK_GRAPH_NOT_SEWER_TOPOLOGY",
+    "raw_pipe_node_id_role": "QA_ONLY_NOT_GRAPH_IDENTITY",
+    "sewer_route_identity": "SOURCE_VERTEX_ORDER_ELEMENTARY_EDGE_POSITIVE_LENGTH_CELL_TRAVERSAL_ADJACENT_UNORDERED_PAIR",
+    "elementary_edge_construction": "ST_MAKELINE(ST_POINTN(segment, edge_ordinal), ST_POINTN(segment, edge_ordinal + 1)) FOR edge_ordinal 1 THROUGH ST_NUMPOINTS(segment)-1",
+    "elementary_edge_collapsed_action": "EXCLUDE_SOURCE_SEGMENT_AND_COUNT_COLLAPSED_ELEMENTARY_EDGE",
+    "traversal_interval": "LOCAL_FRACTIONS_FROM_FRAGMENT_START_AND_END_POINTS_ON_ELEMENTARY_EDGE",
+    "traversal_sort_key": [
+      "source_snapshot_id",
+      "source_resource_id",
+      "segment_id",
+      "edge_ordinal",
+      "quantized_interval_low",
+      "quantized_interval_high",
+      "cell_id"
+    ],
+    "traversal_fraction_quantization_places": 15,
+    "traversal_fraction_rounding_mode": "ROUND_HALF_EVEN",
+    "traversal_gap_tolerance_fraction": "1e-12",
+    "interval_overlap_tolerance_fraction": "1e-12",
+    "out_of_universe_policy": "REQUIRE_WHOLE_SEGMENT_COVERED_BY_FROZEN_CELL_UNIVERSE_UNION_ELSE_EXCLUDE_SOURCE_SEGMENT",
+    "positive_length_shared_boundary_overlap_action": "EXCLUDE_SOURCE_SEGMENT_AND_COUNT_BOUNDARY_OVERLAP",
+    "nonunique_interval_action": "EXCLUDE_SOURCE_SEGMENT_AND_COUNT_NONUNIQUE_TRAVERSAL",
+    "consecutive_duplicate_cell_action": "REMOVE",
+    "boundary_or_corner_only_contact_action": "EXCLUDE_ZERO_LENGTH_INTERSECTION",
+    "geometry_policy": {
+      "included_type": "ST_LineString",
+      "required_state": "ACTIVE_VALID_NONEMPTY_IN_SCOPE",
+      "multilinestring_action": "EXCLUDE_AND_COUNT",
+      "empty_or_invalid_action": "EXCLUDE_AND_COUNT",
+      "ambiguous_traversal_fraction_action": "EXCLUDE_SOURCE_SEGMENT_AND_COUNT_NONUNIQUE_TRAVERSAL"
+    },
+    "cell_pair_policy": "BINARY_LINK_PARALLEL_SEGMENT_COUNT_LENGTH_AND_RESOURCE_COUNT_QA_ONLY",
+    "within_cell_pipe_role": "QA_ONLY_NOT_TRANSITION_WEIGHT_OR_SELF_ALLOCATION",
+    "exact_pipe_geometry_in_api_or_ui": false,
+    "sewer_traversal_intersection_geometry": "devjam26aug17tpe-1270.subterrat_curated.analysis_cells.eligible_geom",
+    "generic_adjacency_geometry": "devjam26aug17tpe-1270.subterrat_curated.analysis_cells.eligible_geom",
+    "eligible_area_geometry": "devjam26aug17tpe-1270.subterrat_curated.analysis_cells.eligible_geom",
+    "map_render_geometry": "devjam26aug17tpe-1270.subterrat_curated.analysis_cells.eligible_geom",
+    "generic_adjacency_rule": "FROM_CELL_ID_NOT_EQUAL_TO_CELL_ID_AND_SHARED_BOUNDARY_LENGTH_M_GREATER_THAN_ZERO_ON_ELIGIBLE_GEOM_UNORDERED_PAIR_DEDUPLICATED",
+    "generic_adjacency_role": "SENSITIVITY_ONLY_BARRIERS_NOT_MODELED",
+    "directionality": "SYMMETRIC_ABSTRACT_LINKS_FLOW_AND_MOVEMENT_DIRECTION_UNVERIFIED"
+  },
+  "metric_roles": {
+    "food_market_v0_1": "AREA_WEIGHTED_SYNTHETIC_SOURCE_SEED",
+    "sewer_attribute_index_v0_2": "SYNTHETIC_SEWER_ROUTE_WEIGHT_WITH_INCOMPLETE_GATES",
+    "approved_rebuilding_admin_site_r150": "NOT_USED_IN_NETWORK_TRANSITION_REMAINS_V0_3_ADMIN_CONTEXT_ONLY"
+  },
+  "seed_rule": {
+    "raw_seed": "stored_raw_seed = ROUND(food_score_12 * eligible_area_m2_6, 18, ROUND_HALF_EVEN)",
+    "normalization": "raw_seed_total = SUM(stored_raw_seed); stored_source_seed = ROUND(stored_raw_seed / raw_seed_total, 24, ROUND_HALF_EVEN)",
+    "iteration_zero": "NORMALIZED_AREA_WEIGHTED_FOOD_SOURCE_SEED",
+    "missing_food_action": "FAIL_MATERIALIZATION",
+    "required_total_before_normalization": "POSITIVE_FINITE"
+  },
+  "transition_rule": {
+    "matrix_orientation": "P_FROM_CELL_TO_CELL",
+    "matrix": "ROW_STOCHASTIC_NONNEGATIVE_FINITE",
+    "synthetic_sewer_route_weight": "0.25 + 0.75 * mean(endpoint sewer_attribute_index_v0_2)",
+    "metric_quantization_decimal_places": 12,
+    "eligible_metric_link_rule": "BOTH_ENDPOINT_SEWER_ATTRIBUTE_VALUES_NON_NULL",
+    "metric_link_distribution": "weight(c,d) / SUM(weight(c,j)) OVER ELIGIBLE_SEWER_NEIGHBORS_OF_c",
+    "uniform_link_comparator_distribution": "1 / COUNT(ELIGIBLE_SEWER_NEIGHBORS_OF_c)",
+    "generic_adjacency_distribution": "1 / COUNT(ELIGIBLE_GENERIC_NEIGHBORS_OF_c)",
+    "same_neighbor_multi_class_action": "COMPUTE_UNROUNDED_SEWER_AND_GENERIC_CLASS_ALLOCATIONS_ADD_BY_FROM_TO_THEN_ROUND_COMBINED_NONSELF_TRANSITION_ONCE_TO_24_DECIMALS",
+    "unused_route_bucket_action": "RETURN_ONLY_TO_SELF_NEVER_REALLOCATE_ACROSS_CLASSES",
+    "stored_nonself_transition": "ROUND(SUM_ALL_UNROUNDED_CLASS_ALLOCATIONS_FOR_SAME_FROM_TO, 24, ROUND_HALF_EVEN)",
+    "stored_self_transition": "ROUND(1 - SUM(stored_nonself_transition), 24, ROUND_HALF_EVEN)",
+    "transition_continuation_alpha": 0.75,
+    "source_reinjection_weight": 0.25,
+    "recurrence": "stored_source_term[to]=ROUND(BIGNUMERIC_0.25*stored_source_seed[to],30,ROUND_HALF_EVEN); stored_product[from,to]=ROUND(BIGNUMERIC_0.75*stored_state[t,from]*stored_P[from,to],30,ROUND_HALF_EVEN); stored_state[t+1,to]=ROUND(stored_source_term[to]+SUM(stored_product[from,to]),24,ROUND_HALF_EVEN)",
+    "abstract_iteration_range": [0, 8],
+    "calendar_time_mapping": null,
+    "tolerances": {
+      "row_sum_absolute": "1e-12",
+      "state_mass_absolute": "1e-9",
+      "recurrence_residual_absolute": "1e-24"
+    }
+  },
+  "numerical_pipeline": {
+    "calculation_type": "BIGNUMERIC",
+    "rounding_mode": "ROUND_HALF_EVEN",
+    "float_to_decimal_expression": "ROUND(CAST(source_float64 AS BIGNUMERIC), target_scale, ROUND_HALF_EVEN)",
+    "canonical_scales": {
+      "food_score": 12,
+      "eligible_area_m2": 6,
+      "raw_seed": 18,
+      "source_seed": 24,
+      "sewer_attribute_index": 12,
+      "synthetic_sewer_route_weight": 12,
+      "transition_value": 24,
+      "recurrence_product": 30,
+      "source_reinjection_term": 30,
+      "unit_mass_state": 24,
+      "display_scale_max": 24,
+      "relative_synthetic_network_state": 12
+    },
+    "quantization_order": [
+      "canonicalize source FLOAT64 inputs before formula evaluation",
+      "compute stored_raw_seed at 18 decimals and raw_seed_total only from stored_raw_seed values",
+      "compute stored_source_seed from stored_raw_seed divided by raw_seed_total then round to 24 decimals",
+      "compute and store canonical route weights before neighbor denominators",
+      "compute neighbor denominators from stored canonical route weights",
+      "sum all unrounded class allocations for the same from-to pair then round the combined nonself transition once to 24 decimals",
+      "set stored self transition to one minus stored nonself row sum",
+      "compute each recurrence product from stored state and stored transition then round to 30 decimals",
+      "compute source reinjection term from BIGNUMERIC 0.25 times stored_source_seed then round to 30 decimals",
+      "sum canonical recurrence products and stored source reinjection term then round stored state to 24 decimals",
+      "compute display_scale_max from stored canonical states",
+      "compute API display value from stored state and stored display scale then round to 12 decimals"
+    ],
+    "negative_zero_action": "SERIALIZE_AS_POSITIVE_ZERO",
+    "api_decimal_serialization": "FIXED_12_DECIMAL_STRING",
+    "canonical_content_hash": {
+      "algorithm": "SHA256",
+      "row_sort_keys": "TABLE_SPECIFIC_PRIMARY_KEYS_ASCENDING",
+      "field_order": "TABLE_SCHEMA_DECLARATION_ORDER",
+      "field_separator": "U+001F",
+      "row_separator": "U+000A",
+      "null_encoding": "U+0000",
+      "string_encoding": "TO_JSON_STRING_SCALAR_WITHOUT_SURROUNDING_STRUCT",
+      "decimal_encoding": "FIXED_SCALE_ASCII_NO_EXPONENT",
+      "boolean_encoding": "true_or_false_lowercase",
+      "integer_encoding": "base10_no_leading_zero_except_zero"
+    },
+    "hard_ranges": {
+      "sewer_attribute_index": "0_TO_1_INCLUSIVE",
+      "synthetic_sewer_route_weight": "0.25_TO_1_INCLUSIVE",
+      "transition_value": "0_TO_1_INCLUSIVE",
+      "relative_synthetic_network_state": "0_TO_1_INCLUSIVE",
+      "display_scale_max": "STRICTLY_POSITIVE"
+    }
+  },
+  "scenarios": [
+    {
+      "scenario_id": "n0_uniform_sewer_link_comparator",
+      "role": "OUTCOME_FREE_TOPOLOGY_ONLY_COMPARATOR",
+      "self_allocation_bucket": 0.65,
+      "sewer_link_bucket": 0.35,
+      "generic_adjacency_bucket": 0.0,
+      "sewer_neighbor_distribution": "UNIFORM_ON_SAME_ELIGIBLE_METRIC_LINK_SUPPORT"
+    },
+    {
+      "scenario_id": "n1_metric_weighted_sewer_links",
+      "role": "BASELINE_CHALLENGER",
+      "self_allocation_bucket": 0.65,
+      "sewer_link_bucket": 0.35,
+      "generic_adjacency_bucket": 0.0,
+      "sewer_neighbor_distribution": "SYNTHETIC_ATTRIBUTE_WEIGHT_NORMALIZED_WITHIN_FROM_CELL"
+    },
+    {
+      "scenario_id": "n2_generic_cell_adjacency_sensitivity",
+      "role": "SENSITIVITY_ONLY",
+      "self_allocation_bucket": 0.55,
+      "sewer_link_bucket": 0.35,
+      "generic_adjacency_bucket": 0.1,
+      "sewer_neighbor_distribution": "SYNTHETIC_ATTRIBUTE_WEIGHT_NORMALIZED_WITHIN_FROM_CELL"
+    }
+  ],
+  "required_graph_quality": [
+    "NORMATIVE_REGISTRY_contracts/network_redistribution_artifacts_v0_3_candidate.json_quality_registry",
+    "ALL_3420_CELLS_IN_EVERY_GRAPH_SCOPE_ISOLATES_AS_SINGLE_VERTEX_COMPONENTS",
+    "CONNECTED_COMPONENT_ID_MINIMUM_SIGNED_INT64_CELL_ID",
+    "EVERY_198091_PIPE_SOURCE_CENSUS_ROW_EXACTLY_ONE_TERMINAL_CLASSIFICATION_BY_FIXED_PRECEDENCE",
+    "internal_cell_connectivity_state_NOT_IDENTIFIABLE_WITHOUT_ADDITIONAL_JUNCTION_MODEL"
+  ],
+  "artifact_policy": {
+    "dataset": "subterrat_simulations",
+    "tables": [
+      "subterrat_features.synthetic_network_cell_links_v0_3_candidate",
+      "subterrat_simulations.synthetic_network_transitions_v0_3_internal_simulation",
+      "subterrat_simulations.synthetic_network_states_v0_3_internal_simulation",
+      "subterrat_simulations.synthetic_network_quality_v0_3_internal_simulation",
+      "subterrat_simulations.map_synthetic_network_cells_v0_3_internal_simulation",
+      "subterrat_simulations.schematic_cell_links_v0_3_internal_simulation"
+    ],
+    "prediction_dataset_or_namespace_forbidden": true,
+    "public_iam_forbidden": true,
+    "schematic_link_semantics": "STATIC_BINARY_CELL_LINK_DEFAULT_HIDDEN_NOT_STEP_SPECIFIC_TRANSFER",
+    "exact_table_schemas_primary_keys_field_order_and_hash_encoding": "contracts/network_redistribution_artifacts_v0_3_candidate.json",
+    "materialization_receipt_fields": [
+      "contract_hash",
+      "finalized_input_manifest_hash",
+      "artifact_schema_contract_hash",
+      "api_schema_contract_hash",
+      "sql_hash",
+      "code_revision",
+      "output_table_hashes"
+    ]
+  },
+  "ui_policy": {
+    "mode_name": "Network redistribution challenger",
+    "default_scenario": "n1_metric_weighted_sewer_links",
+    "iteration_slider": "INTEGER_0_TO_8_ABSTRACT_ITERATIONS",
+    "autoplay": false,
+    "playback_control": false,
+    "rendering": "DISCRETE_CELL_CHOROPLETH_NO_HEAT_KERNEL_OR_INTERPOLATION",
+    "schematic_links_default_visible": false,
+    "schematic_link_geometry": "CELL_CENTROID_TO_CELL_CENTROID_ONLY",
+    "missing_or_unsupported_rendering": "OVERLAY_HATCH_ON_FIXED_SCALE_STATE_FILL_WITHOUT_NULLING_OR_LOW_COLOR_SUBSTITUTION",
+    "schematic_link_scope": "SCENARIO_ACTIVE_LINKS_ONLY_WITH_SEWER_AND_GENERIC_CLASSES_VISUALLY_DISTINCT",
+    "required_labels": [
+      "Internal synthetic network redistribution",
+      "Abstract iteration - no time mapping",
+      "Not a calibrated rat-presence probability",
+      "Not a sewer-flow or movement map",
+      "Schematic aggregated cell link - not pipe alignment",
+      "NO_TRUSTED_RESULT",
+      "Operational use prohibited"
+    ]
+  },
+  "api_policy": {
+    "route": "/api/v1/lab/v0.3/network-redistribution/cells",
+    "link_route": "/api/v1/lab/v0.3/network-redistribution/links",
+    "scenario_input": "LOCKED_ENUM_ONLY",
+    "iteration_input": "INTEGER_0_TO_8_ONLY",
+    "arbitrary_parameter_input_forbidden": true,
+    "raw_unit_mass_state": "RESTRICTED_QA_ONLY_NOT_MAP_RESPONSE",
+    "wire_schema": "contracts/network_redistribution_api_v0_3.schema.json",
+    "wire_schema_state": "NORMATIVE_JSON_SCHEMA_2020_12",
+    "canonical_wire_validator": "NORMATIVE_x-normative-wire-rules_subterrat_network_redistribution_wire_v0_3",
+    "limitation_code_assignment": "EXACT_SCENARIO_SUPPORT_CONDITION_AND_LINK_CLASS_MAPPING_IN_NORMATIVE_WIRE_SCHEMA_NO_IMPLEMENTER_DISCRETION",
+    "link_orientation": "CANONICAL_UNORDERED_FROM_SIGNED_INT64_LESS_THAN_TO_SIGNED_INT64_NO_SERIALIZER_REORIENTATION",
+    "canonical_array_order": "LEXICOGRAPHIC_CODES_CELL_ID_SIGNED_INT64_CELLS_LINK_CLASS_THEN_SIGNED_FROM_TO_LINKS",
+    "cell_required_response_metadata": [
+      "contract_hash",
+      "finalized_input_manifest_hash",
+      "run_id",
+      "scenario_id",
+      "abstract_iteration",
+      "normalization_scope",
+      "display_scale_max",
+      "use_state",
+      "evidence_state",
+      "operational_use",
+      "global_limitation_codes"
+    ],
+    "link_required_response_metadata": [
+      "schema_version",
+      "contract_hash",
+      "finalized_input_manifest_hash",
+      "run_id",
+      "scenario_id",
+      "use_state",
+      "evidence_state",
+      "operational_use",
+      "global_limitation_codes"
+    ],
+    "cell_response_schema": {
+      "cell_id": "CANONICAL_STRING_SIGNED_INT64_PATTERN_^(0|-?[1-9][0-9]*)$_NO_NEGATIVE_ZERO_OR_LEADING_ZERO",
+      "eligible_geojson": "CANONICAL_GEOJSON_TEXT_STRING_CLIENT_MUST_PARSE",
+      "relative_synthetic_network_state": "FIXED_12_DECIMAL_STRING_0_TO_1",
+      "sewer_attribute_available": "BOOLEAN",
+      "eligible_sewer_neighbor_count": "NONNEGATIVE_INTEGER",
+      "eligible_generic_neighbor_count": "NONNEGATIVE_INTEGER",
+      "self_only_transition_row": "BOOLEAN_SCENARIO_SPECIFIC",
+      "cell_support_state": "ENUM",
+      "cell_limitation_codes": "ARRAY_OF_STRING"
+    },
+    "cell_support_state_enum": [
+      "METRIC_SEWER_SUPPORTED",
+      "NO_ELIGIBLE_SEWER_NEIGHBOR",
+      "SEWER_ATTRIBUTE_MISSING",
+      "GENERIC_ADJACENCY_ONLY",
+      "SELF_ONLY"
+    ],
+    "cell_support_state_precedence": [
+      "SELF_ONLY when no nonself transition allocation exists in selected scenario",
+      "GENERIC_ADJACENCY_ONLY when selected scenario has generic allocation but no eligible sewer allocation",
+      "SEWER_ATTRIBUTE_MISSING when sewer attribute is null",
+      "NO_ELIGIBLE_SEWER_NEIGHBOR when attribute exists but eligible sewer neighbor count is zero",
+      "METRIC_SEWER_SUPPORTED otherwise"
+    ],
+    "link_response_schema": {
+      "from_cell_id": "STRING_SIGNED_INT64",
+      "to_cell_id": "STRING_SIGNED_INT64",
+      "link_class": "SYNTHETIC_SEWER_LINK_OR_GENERIC_CELL_ADJACENCY",
+      "active_in_scenario": "BOOLEAN_ALWAYS_TRUE_FOR_RETURNED_ROWS",
+      "metric_eligible": "TRUE_FOR_SEWER_LINK_NULL_FOR_GENERIC_ADJACENCY_DUAL_CLASS_PAIR_HAS_TWO_ROWS",
+      "schematic_from_centroid": "OBJECT_LONGITUDE_LATITUDE_FIXED_7_DECIMAL_STRINGS",
+      "schematic_to_centroid": "OBJECT_LONGITUDE_LATITUDE_FIXED_7_DECIMAL_STRINGS",
+      "link_limitation_codes": "ARRAY_OF_STRING"
+    },
+    "link_response_scope": "ONLY_LINKS_ACTIVE_IN_REQUESTED_LOCKED_SCENARIO_N2_RETURNS_BOTH_CLASSES_OTHER_SCENARIOS_RETURN_METRIC_ELIGIBLE_SEWER_CLASS_ONLY"
+  },
+  "known_limitations": [
+    "CELL_GRAPH_IS_NOT_TRUE_SEWER_TOPOLOGY",
+    "CELL_LEVEL_MIXING_CAN_CONNECT_DISCONNECTED_INTERNAL_SUBNETWORKS",
+    "RAW_NODE_IDS_HAVE_SPATIAL_CONFLICTS",
+    "PIPE_FLOW_AND_RAT_MOVEMENT_DIRECTION_UNVERIFIED",
+    "V0_2_SEWER_METRIC_GATES_INCOMPLETE",
+    "GENERIC_ADJACENCY_BARRIERS_NOT_MODELED",
+    "URBAN_RENEWAL_NOT_USED_NO_RELIABLE_CONSTRUCTION_TIMELINE",
+    "NO_TAIPEI_MOVEMENT_OR_TEMPORAL_CALIBRATION",
+    "ITERATION_8_NOT_CONVERGENCE_OR_FINAL_STATE",
+    "NO_FIELD_GROUND_TRUTH",
+    "NO_TRUSTED_RESULT"
+  ]
+}

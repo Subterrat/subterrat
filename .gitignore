@@ -3,6 +3,10 @@
 __pycache__/
 *.pyc
 artifacts/
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
 
 # Flutter / Dart
 .dart_tool/
