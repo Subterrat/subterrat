@@ -1,0 +1,163 @@
+{
+  "contract_id": "subterrat_sewer_metrics_v0_2_candidate",
+  "parent_freeze_id": "t0-layerwise-development-20260817-v2",
+  "version_status": "DRAFT_DATA_GATED_NOT_FROZEN",
+  "model_kind": "DETERMINISTIC_HOTSPOT_RANKING",
+  "outcome_exposure": "DEVELOPMENT_EXPOSED",
+  "outcome_policy": {
+    "rat_radar_role": "FUTURE_POST_FREEZE_VALIDATION_ONLY",
+    "existing_889_reports_allowed_for_selection_or_tuning": false,
+    "forbidden_uses": [
+      "feature_selection",
+      "quality_threshold_selection",
+      "weight_tuning",
+      "model_selection",
+      "training",
+      "calibration"
+    ]
+  },
+  "scientific_source": {
+    "title": "Characteristics of the urban sewer system and rat presence in Seattle",
+    "doi": "10.1007/s11252-022-01255-2",
+    "data_doi": "10.5061/dryad.mw6m90603",
+    "role": "FEATURE_ELIGIBILITY_AND_DIRECTION_ONLY_NOT_TAIPEI_EFFECT_SIZE"
+  },
+  "taipei_pipe_source": {
+    "dataset_id": "9b25821a-c0d0-438d-a027-4a09f4640813",
+    "title": "臺北市公共管線圖資_污水系統管線",
+    "source_system_type": "sanitary",
+    "snapshot_date": "2026-02-23",
+    "source_crs": "EPSG:3826",
+    "resources": [
+      {
+        "resource_id": "7d82d9c9-8d89-4058-b845-f86698aee70f",
+        "file_name": "A8040101_11502_1.xml"
+      },
+      {
+        "resource_id": "bb299d68-e7e8-46c6-b187-5ff04c6ed00c",
+        "file_name": "A8040101_11502_2.xml"
+      }
+    ],
+    "observed_profile": {
+      "segment_rows": 198091,
+      "unique_segment_ids": 198091,
+      "duplicate_segment_id_rows": 0,
+      "geometry_type": "GML_LINESTRING_3D",
+      "diameter_unit_code_counts": {
+        "0_mm": 197531,
+        "1_inch": 403,
+        "2_cm": 90,
+        "3_m": 67
+      },
+      "normalized_diameter_median_m": 0.2,
+      "normalized_diameter_p99_m": 0.7,
+      "start_depth_median_m": 1.1,
+      "start_depth_p99_m": 8.29,
+      "start_depth_max_m": 472.0,
+      "end_depth_median_m": 1.29,
+      "end_depth_p99_m": 9.63,
+      "end_depth_max_m": 390.0,
+      "reported_pipe_length_median": 9.4,
+      "reported_pipe_length_max": 1944199.0,
+      "geometry_2d_length_median_m": 9.50352566152422,
+      "geometry_2d_length_max_m": 1980.6434264297332,
+      "reported_length_difference_over_10pct_rows": 52178,
+      "status_code_counts": {
+        "use_status_0_active": 192533,
+        "use_status_1_inactive": 5558,
+        "data_status_0_surveyed": 14274,
+        "data_status_1_redrawn_from_original": 183817,
+        "pipe_type_0_underground": 198091
+      },
+      "date_concentration_review": {
+        "2000-02-29": 23838,
+        "2018-10-31": 21636
+      },
+      "future_install_dates_after_snapshot": 1
+    },
+    "authority_limit": "OFFICIAL_OPEN_REFERENCE_GEOMETRY_EXACT_DATA_REQUIRES_PIPE_AUTHORITY_CONFIRMATION"
+  },
+  "metrics": [
+    {
+      "metric_id": "sewer_system_type",
+      "paper_construct": "sanitary pipes higher than stormwater or other systems",
+      "direction": "higher_sanitary_share",
+      "candidate_field": "sanitary_system_record_share",
+      "aggregation": "reuse the frozen v0.1 transform without modification",
+      "current_state": "FROZEN_V0_1_COMPONENT_REUSED_UNCHANGED",
+      "gate": "v0.1 feature snapshot, transform, coverage universe, and direction must remain unchanged; a line-length redesign requires a later separately registered version"
+    },
+    {
+      "metric_id": "surface_elevation",
+      "paper_construct": "higher elevation",
+      "direction": "higher",
+      "candidate_field": "valid_surface_elevation_m",
+      "aggregation": "median of valid official manhole top or ground elevations within cell, with system-specific counts",
+      "current_state": "CONDITIONAL",
+      "gate": "zero and missing semantics, CRS, field meaning, and eligible-area coverage must pass; geometry Z is forbidden until its vertical semantics are verified"
+    },
+    {
+      "metric_id": "connected_pipe_diameter",
+      "paper_construct": "narrower pipes",
+      "direction": "lower",
+      "candidate_field": "circular_pipe_diameter_m",
+      "aggregation": "clipped-pipe-length-weighted mean; unweighted median and IQR are QA outputs",
+      "current_state": "CONDITIONAL_OFFICIAL_LINE_SOURCE_FOUND",
+      "gate": "unit code must normalize by the official code list; width must be positive; height must be zero for width to be treated as circular diameter; use_status=0 only; surveyed versus redrawn quality sensitivity, geometry, and coverage gates must pass"
+    },
+    {
+      "metric_id": "connected_pipe_depth",
+      "paper_construct": "shallower pipes",
+      "direction": "lower",
+      "candidate_field": "mean_endpoint_burial_depth_m",
+      "aggregation": "clipped-pipe-length-weighted mean of the two endpoint depths; interpolation is explicitly marked inferred",
+      "current_state": "CONDITIONAL_DEPTH_OUTLIER_REVIEW",
+      "gate": "the official standard defines endpoint depth as ground-to-pipe-top cover depth in metres; use_status=0 only; surveyed versus redrawn quality sensitivity must pass; 472 m and 390 m maxima must be quarantined under an authority-backed engineering rule before scoring"
+    },
+    {
+      "metric_id": "connected_pipe_age",
+      "paper_construct": "older pipes",
+      "direction": "higher",
+      "candidate_field": "pipe_age_years_at_snapshot",
+      "aggregation": "clipped-pipe-length-weighted mean; install-date concentration and invalid-date shares are QA outputs",
+      "current_state": "CONDITIONAL_DATE_CONCENTRATION_REVIEW",
+      "gate": "installation-date semantics are documented, but concentrated dates and the one post-snapshot date require provider or independent asset-record confirmation before scoring"
+    }
+  ],
+  "cell_policy": {
+    "grid_system": "S2",
+    "level": 15,
+    "line_allocation": "ST_LENGTH(ST_INTERSECTION(segment, cell))",
+    "reported_pipe_length_role": "QA_ONLY_GEOMETRY_DERIVED_LENGTH_IS_CANONICAL",
+    "missing_metric_action": "NULL_AND_REPORT_COVERAGE_NOT_ZERO",
+    "formal_citywide_coverage_gate": "AT_LEAST_95_PERCENT_ELIGIBLE_AREA_OR_RESCOPED_PILOT",
+    "qa_outputs": [
+      "matched_segment_count",
+      "valid_clipped_length_m",
+      "missing_or_invalid_share",
+      "median",
+      "iqr",
+      "p90",
+      "max"
+    ]
+  },
+  "variant_policy": {
+    "materialize_individual_metric_variants_first": true,
+    "composite_id": "sewer_paper_composite_v0_2",
+    "composite_allowed_now": false,
+    "composite_rule_after_all_gates_pass": "mean of five monotone empirical percentile ranks on complete-case eligible cells",
+    "dynamic_reweighting_for_missing_metrics": false,
+    "seattle_coefficients_reused": false
+  },
+  "forbidden_proxies": [
+    "sewer_access_point_density",
+    "distance_to_nearest_manhole",
+    "local_degree",
+    "junction_density",
+    "dead_end_density",
+    "manhole_depth_as_pipe_depth",
+    "manhole_completion_date_as_pipe_age",
+    "unverified_geometry_z_as_surface_elevation",
+    "endpoint_chord_as_authority_pipe_geometry"
+  ]
+}
