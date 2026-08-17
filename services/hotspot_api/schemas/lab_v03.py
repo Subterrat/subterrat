@@ -73,3 +73,55 @@ class V03LabFeatureCollection(BaseModel):
     features: list[V03LabCellFeature] = Field(default_factory=list, max_length=1500)
     next_page_token: str | None = None
     truncated: Literal[False] = False
+
+
+class V03EvaluationSummaryRow(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    ecological_tolerance_m: Literal[0, 200]
+    tolerance_role: str = Field(..., min_length=1)
+    report_denominator: int = Field(..., gt=0)
+    v0_3_overlapping_report_count: int = Field(..., ge=0)
+    v0_3_report_overlap_fraction: float = Field(..., ge=0, le=1)
+    v0_3_buffered_taipei_area_share: float = Field(..., ge=0, le=1)
+    v0_3_report_overlap_to_area_ratio: float = Field(..., ge=0)
+    food_overlapping_report_count: int = Field(..., ge=0)
+    food_report_overlap_fraction: float = Field(..., ge=0, le=1)
+    food_buffered_taipei_area_share: float = Field(..., ge=0, le=1)
+    food_report_overlap_to_area_ratio: float = Field(..., ge=0)
+    difference_in_report_overlap_vs_food_v0_1: float = Field(..., ge=-1, le=1)
+    distance_semantics: str = Field(..., min_length=1)
+    footprint_semantics: str = Field(..., min_length=1)
+    calculation_path: str = Field(..., min_length=1)
+    evaluation_kind: str = Field(..., min_length=1)
+    outcome_role: str = Field(..., min_length=1)
+    evaluated_variant_id: str = Field(..., min_length=1)
+    baseline_variant_id: str = Field(..., min_length=1)
+    specification_git_head: str = Field(..., pattern=r"^[0-9a-f]{40}$")
+    source_csv_sha256: str = Field(..., pattern=r"^[0-9a-f]{64}$")
+    observed_from: str = Field(..., min_length=1)
+    observed_to: str = Field(..., min_length=1)
+    score_semantics: Literal[
+        "REPORT_OVERLAP_FRACTION_NOT_PROBABILITY_OR_ACCURACY"
+    ]
+    evidence_state: Literal["NO_TRUSTED_RESULT"]
+    use_state: Literal["INTERNAL_RESEARCH_ONLY"]
+    operational_use: Literal["PROHIBITED"]
+    public_release_ready: Literal[False]
+    literature_doi: str = Field(..., min_length=1)
+    literature_interpretation: str = Field(..., min_length=1)
+    limitation_codes: list[str] = Field(..., min_length=1)
+
+
+class V03EvaluationSummaryResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["V0_3_EVALUATION_SUMMARY"] = "V0_3_EVALUATION_SUMMARY"
+    evidence_state: Literal["NO_TRUSTED_RESULT"] = "NO_TRUSTED_RESULT"
+    use_state: Literal["INTERNAL_RESEARCH_ONLY"] = "INTERNAL_RESEARCH_ONLY"
+    operational_use: Literal["PROHIBITED"] = "PROHIBITED"
+    public_release_ready: Literal[False] = False
+    score_semantics: Literal[
+        "REPORT_OVERLAP_FRACTION_NOT_PROBABILITY_OR_ACCURACY"
+    ] = "REPORT_OVERLAP_FRACTION_NOT_PROBABILITY_OR_ACCURACY"
+    rows: list[V03EvaluationSummaryRow] = Field(..., min_length=2, max_length=2)

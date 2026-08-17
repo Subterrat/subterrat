@@ -16,6 +16,7 @@ class Settings:
     bq_dataset: str
     bq_table: str
     bq_v03_table: str
+    bq_v03_evaluation_table: str
     bq_simulations_dataset: str
     bq_network_map_table: str
     bq_network_state_table: str
@@ -33,6 +34,13 @@ class Settings:
     @property
     def v03_table_ref(self) -> str:
         return f"{self.project_id}.{self.bq_dataset}.{self.bq_v03_table}"
+
+    @property
+    def v03_evaluation_table_ref(self) -> str:
+        return (
+            f"{self.project_id}.{self.bq_dataset}."
+            f"{self.bq_v03_evaluation_table}"
+        )
 
     @property
     def network_map_table_ref(self) -> str:
@@ -73,6 +81,10 @@ def get_settings() -> Settings:
         bq_table=os.environ.get("BQ_TABLE", "map_hotspot_cells_t0"),
         bq_v03_table=os.environ.get(
             "BQ_V03_TABLE", "map_hotspot_cells_v0_3_internal_simulation"
+        ),
+        bq_v03_evaluation_table=os.environ.get(
+            "BQ_V03_EVALUATION_TABLE",
+            "hotspot_evaluation_summary_v0_3_internal_simulation",
         ),
         bq_simulations_dataset=os.environ.get(
             "BQ_SIMULATIONS_DATASET", "subterrat_simulations"

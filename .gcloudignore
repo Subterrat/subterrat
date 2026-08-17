@@ -1,9 +1,5 @@
+.gcloudignore
 .git
-.coh
-.dart_tool
-.env
-.idea
-.vscode
 .venv
 .pytest_cache
 artifacts
@@ -12,10 +8,5 @@ artifacts
 node_modules
 dist
 coverage
-build
-docs
-tests
-test
-*.csv
-*.log
 .DS_Store
+臺北市都市更新地圖_都更資料.csv

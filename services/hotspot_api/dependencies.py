@@ -11,6 +11,9 @@ from services.hotspot_api.repositories.network_redistribution_repo import (
     NetworkRedistributionRepository,
 )
 from services.hotspot_api.repositories.v03_cells_repo import V03CellsRepository
+from services.hotspot_api.repositories.v03_evaluation_repo import (
+    V03EvaluationRepository,
+)
 from services.hotspot_api.repositories.releases_repo import ReleasesRepository
 
 
@@ -44,6 +47,13 @@ def get_v03_cells_repository(
     settings: Settings = Depends(get_settings),
 ) -> V03CellsRepository:
     return V03CellsRepository(gateway, settings.v03_table_ref)
+
+
+def get_v03_evaluation_repository(
+    gateway: BigQueryGateway = Depends(get_bigquery_gateway),
+    settings: Settings = Depends(get_settings),
+) -> V03EvaluationRepository:
+    return V03EvaluationRepository(gateway, settings.v03_evaluation_table_ref)
 
 
 def get_network_redistribution_repository(

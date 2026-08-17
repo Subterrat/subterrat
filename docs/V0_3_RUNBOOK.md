@@ -243,3 +243,85 @@ attribution.
 
 Do not use results to change any specification. Do not call the exercise
 validation, prediction, risk estimation, or component attribution.
+
+## 7. Materialize the aggregate evaluation serving table
+
+After both aggregate evaluation sources exist and have passed their own
+fail-closed assertions, materialize the two-row internal serving table:
+
+```bash
+bq --location=asia-east1 query --use_legacy_sql=false \
+  < sql/validation/24_materialize_hotspot_evaluation_serving_v0_3.sql
+```
+
+Point the internal Cloud Run revision at the materialized table and keep the
+existing lab gate enabled only for the authorized internal service:
+
+```bash
+export BQ_V03_EVALUATION_TABLE=hotspot_evaluation_summary_v0_3_internal_simulation
+export LAB_V03_ENABLED=true
+```
+
+The read route is `GET /api/v1/lab/v0.3/evaluation-summary`.
+
+SQL 24 reads only these aggregate sources:
+
+- `subterrat_evaluation.rat_radar_report_location_concordance_v0_3`
+- `subterrat_evaluation.rat_radar_ecological_tolerance_200m_v0_3`
+
+It writes:
+
+```text
+subterrat_predictions.hotspot_evaluation_summary_v0_3_internal_simulation
+```
+
+The serving grain is one row per fixed `ecological_tolerance_m`: `0` for the
+exact S2 Level 15 primary and `200` for the literature-anchored post-lock
+descriptive sensitivity. Composite and frozen food-only baseline fields stay on
+the same row so the Cloud Run API can return the chart without querying an
+outcome table or performing a spatial calculation at request time.
+
+Verify the aggregate boundary:
+
+```sql
+SELECT
+  ecological_tolerance_m,
+  report_denominator,
+  v0_3_overlapping_report_count,
+  v0_3_report_overlap_fraction,
+  v0_3_buffered_taipei_area_share,
+  v0_3_report_overlap_to_area_ratio,
+  food_overlapping_report_count,
+  food_report_overlap_fraction,
+  food_buffered_taipei_area_share,
+  food_report_overlap_to_area_ratio,
+  difference_in_report_overlap_vs_food_v0_1,
+  evidence_state,
+  use_state,
+  operational_use,
+  public_release_ready
+FROM
+  `devjam26aug17tpe-1270.subterrat_predictions.hotspot_evaluation_summary_v0_3_internal_simulation`
+ORDER BY ecological_tolerance_m;
+```
+
+Expected cardinality is exactly two rows with denominator `889`. The 0 m row
+must reproduce the primary concordance source; the 200 m row must reproduce the
+ecological-tolerance source. Every row remains `NO_TRUSTED_RESULT`,
+`INTERNAL_RESEARCH_ONLY`, `PROHIBITED`, and `public_release_ready=false`.
+
+The table intentionally excludes report hashes, report IDs, cell IDs,
+coordinates, geography, and probability fields. Grant the Cloud Run service
+account read access to this one serving table, not to `subterrat_evaluation` or
+any raw/restricted outcome dataset. The API must use an explicit column
+allowlist and must not use `SELECT *`.
+
+The two upstream tables represent the same Taipei local-clock observation
+window, but their stored UTC timestamps differ by eight hours: the primary
+renderer encoded the local clock as UTC-naive, while the later 200 m aggregate
+normalized it to UTC. SQL 24 preserves each source timestamp, asserts the known
+offset, and exposes a limitation code; it does not silently rewrite provenance.
+
+The 200 m row cites `https://doi.org/10.1071/WR11149`. It is an average maximal
+sewer-rat coverage literature anchor, not a daily movement distance, validated
+Taipei radius, accuracy metric, calibrated probability, or operational result.
