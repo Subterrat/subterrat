@@ -62,23 +62,3 @@ flutter run -d chrome --dart-define=API_BASE=https://your-service.run.app
 | `lib/sim.dart` | 鼠群族群機制模型 |
 | `lib/api.dart` | API 用戶端與示範資料 |
 | `lib/home_page.dart` | 主畫面 |
-
-## 幾個實作上的重點
-
-**熱點的透明度也跟著數值走**，不只是顏色深淺。只改顏色的話每格同樣濃，看起來會是方格拼貼而不是熱點圖。低於門檻的格子整格不畫。
-
-**圓形不確定範圍用結構性分數決定，不是當下熱度。** 圈選代表「事先指出的地方」，播放時間軸時它不該移動。
-
-**觀測通報的密度模式用紫色不是紅色。** 圈選範圍是橘色，紅橘同屬暖色，疊在一起時重疊區會糊掉，而那正是要看清楚的地方。
-
-**底圖一定要套 `kMutedMapStyle`。** 沒有它的話 Google 地圖水域的藍會跟介面主色混在一起。
-
-**格子數上限 380。** `google_maps_flutter` 畫太多 Polygon 會掉幀。
-
-## 待辦
-
-- `Palette.brand` 還是佔位色碼，尚未換成 logo 的實際色碼
-- Figma 的主色還是綠色 `#126D50`，需與這裡的深藍同步
-- 字級：Figma 原稿最小 7px，這裡拉到 11px 起跳（7px 投影看不見），Figma 需跟著調
-- 「廢棄建築」還沒有 citywide 排名資料，`structural_score` 因此一律是 `null`（見上方「後端端點」）；等這組資料到位後才有真正的綜合結構分數
-- `GET /api/observed` 後端還沒實作，前端目前固定回退到示範資料
