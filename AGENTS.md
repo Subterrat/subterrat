@@ -14,6 +14,15 @@
 - 目前沒有 repository-owned Sensor 或 validation receipt；不得宣稱 `TRUSTED_RECEIPT`，應回報 `NO_TRUSTED_RESULT`。
 - 對 static、runtime、browser、live-provider、production 與 human-review 證據分層陳述，不得跨層推論。
 
+## 測試資料夾
+
+`test/` 與 `tests/` 是兩個獨立資料夾，分屬不同工具鏈，不要合併：
+
+- `test/`：Flutter／Dart，`flutter test` 預設只認這個名稱。
+- `tests/`：Python／pytest，`pyproject.toml` 的 `[tool.pytest.ini_options]` 已固定 `testpaths = ["tests"]`。
+
+新增測試一律照語言放進對應資料夾，不要互相搬移。
+
 ## 維護觸發
 
 當 product belief、source layout、資料契約、Model card、Operations runbook、Sensor、CI、provider、deployment、Agent 權限或公開政策改變時，重新檢查 `docs/BELIEF.md`、`docs/HARNESS_ARCHITECTURE.md` 與 `.coh/model.json`。
