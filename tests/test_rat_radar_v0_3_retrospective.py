@@ -28,6 +28,33 @@ class RatRadarV03RetrospectiveTest(unittest.TestCase):
         self.assertIn("unscored_report_fraction", sql)
         self.assertIn("PRIMARY_CITYWIDE_MAP_AS_DELIVERED", sql)
         self.assertIn("SECONDARY_EXACT_V0_3_COMMON_SUPPORT", sql)
+        self.assertIn("COUNT(*) = 1", sql)
+        self.assertIn(
+            "AND variant_id IN (\n"
+            "      'v0_3_equal_group_internal_simulation_r150',\n"
+            "      'food_market_only_v0_1'\n"
+            "    )",
+            sql,
+        )
+        self.assertIn(
+            "WHERE metrics.variant_id = 'v0_3_equal_group_internal_simulation_r150'",
+            sql,
+        )
+        self.assertIn(
+            "WHERE fractions.variant_id = "
+            "'v0_3_equal_group_internal_simulation_r150'",
+            sql,
+        )
+        self.assertIn("food_overlapping_report_count", sql)
+        self.assertIn("food_selected_area_share", sql)
+        self.assertIn("food_report_overlap_to_area_ratio", sql)
+        self.assertIn("food_report_overlap_fraction_on_common_support", sql)
+        self.assertNotIn("sewer_attribute_index_v0_2_complete_case", sql)
+        self.assertNotIn(
+            "approved_rebuilding_admin_site_cell_footprint_buffer_150m",
+            sql,
+        )
+        self.assertNotIn("sewer_system_type_only_v0_1", sql)
         self.assertIn(
             "CONCORDANCE_ONLY_NOT_TRAINING_SELECTION_TUNING_OR_ATTRIBUTION",
             sql,

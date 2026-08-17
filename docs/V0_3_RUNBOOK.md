@@ -176,6 +176,11 @@ FROM
 Expected: `rows=unique_cells=3420`, all invalid/non-null probability counts are
 zero, and every variant remains unavailable for public or operational use.
 
+SQL 16／17 intentionally retain seven outcome-free variants for QA and frontend
+preview. Rat Radar must not be used to select, tune, rerank, or attribute among
+those variants. Only the v0.3 composite and frozen food-only v0.1 baseline may
+enter the later concordance lock.
+
 ## 5. Run the local API and React lab
 
 ```bash
@@ -213,6 +218,10 @@ Only after the committed live rows pass QA, execute SQL 19 with the same seven
 parameters used by SQL 16. This creates the lock manifest; it does not make the
 simulation public, operational, trusted, predictive, or prospective.
 
+SQL 19 copies exactly two variants into the concordance lock: the v0.3
+equal-group composite and frozen food-only v0.1 baseline. The remaining five
+diagnostic variants stay outside the lock and cannot receive outcome results.
+
 Then render the one-shot SQL locally:
 
 ```bash
@@ -223,8 +232,14 @@ PYTHONPATH=. uv run python scripts/render_rat_radar_v0_3_retrospective_sql.py \
 
 The generated SQL persists anonymous report hashes and S2 cells only. It creates:
 
-- primary citywide map-as-delivered concordance for seven variants;
-- secondary v0.3 exact-common-support comparison against frozen food v0.1.
+- one primary citywide row for the v0.3 equal-group composite, with frozen
+  food-only v0.1 metrics in baseline columns;
+- one secondary exact-common-support row for the same composite and baseline.
+
+Food, sewer-attribute, and approved-rebuilding layers may remain separate in
+the frontend for explanation. They must not receive separate Rat Radar
+concordance results, drive variant selection or tuning, or support component
+attribution.
 
 Do not use results to change any specification. Do not call the exercise
 validation, prediction, risk estimation, or component attribution.

@@ -97,6 +97,77 @@ class HotspotScenarioV03SqlTest(unittest.TestCase):
         self.assertIn("NO_TRUSTED_RESULT", lock_sql)
         self.assertIn("PROHIBITED", lock_sql)
 
+    def test_retrospective_lock_exposes_only_composite_and_baseline(self) -> None:
+        lock_sql = self.sql["19_lock_hotspot_scenario_v0_3.sql"]
+        expected_variants = {
+            "v0_3_equal_group_internal_simulation_r150",
+            "food_market_only_v0_1",
+        }
+        locked_rows = re.search(
+            r"hotspot_scenarios_v0_3_locked_internal_simulation`\s*"
+            r"CLUSTER BY variant_id, cell_id AS\s*SELECT.*?"
+            r"WHERE variant_id IN \((.*?)\);",
+            lock_sql,
+            flags=re.DOTALL,
+        )
+        self.assertIsNotNone(locked_rows)
+        self.assertEqual(
+            set(re.findall(r"'([^']+)'", locked_rows.group(1))),
+            expected_variants,
+        )
+
+        included_variants = re.search(
+            r"@urban_renewal_source_snapshot_id AS "
+            r"urban_renewal_source_snapshot_id,\s*\[(.*?)\]\s+"
+            r"AS included_variants",
+            lock_sql,
+            flags=re.DOTALL,
+        )
+        self.assertIsNotNone(included_variants)
+        self.assertEqual(
+            set(re.findall(r"'([^']+)'", included_variants.group(1))),
+            expected_variants,
+        )
+        self.assertIn("COUNT(*) = 3420 * 2", lock_sql)
+        self.assertIn("COUNT(*) = 3420 * 7", lock_sql)
+        self.assertIn("COUNT(*) = 7", lock_sql)
+        for variant_id in expected_variants:
+            self.assertRegex(
+                lock_sql,
+                rf"COUNTIF\([^)]*variant_id = '{variant_id}'[^)]*\) = 3420",
+            )
+
+    def test_frontend_components_are_not_outcome_comparison_variants(self) -> None:
+        lock_sql = self.sql["19_lock_hotspot_scenario_v0_3.sql"]
+        component_layers = re.search(
+            r"AS included_variants,\s*\[(.*?)\]\s+"
+            r"AS frontend_component_layers",
+            lock_sql,
+            flags=re.DOTALL,
+        )
+        self.assertIsNotNone(component_layers)
+        self.assertEqual(
+            set(re.findall(r"'([^']+)'", component_layers.group(1))),
+            {
+                "food_market",
+                "sewer_attribute_index",
+                "approved_rebuilding_admin_site_cell_footprint_buffer_150m",
+            },
+        )
+        self.assertIn("'DENY' AS component_outcome_concordance", lock_sql)
+        self.assertIn(
+            "ANY_VALUE(component_outcome_concordance) = 'DENY'", lock_sql
+        )
+        self.assertIn(
+            "v0_3_equal_group_internal_simulation_r150,food_market_only_v0_1",
+            lock_sql,
+        )
+        self.assertIn(
+            "food_market,sewer_attribute_index,"
+            "approved_rebuilding_admin_site_cell_footprint_buffer_150m",
+            lock_sql,
+        )
+
     def test_structural_comparison_is_outcome_free(self) -> None:
         comparison_sql = (
             ROOT / "sql" / "analysis" / "01_compare_v0_2_sewer_to_food.sql"

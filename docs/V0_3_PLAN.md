@@ -12,7 +12,8 @@ ordinal 的內部空間比較：
 2. 在餐飲、sewer attribute index、核定重建行政 site proxy 固定等權時，
    內部 comparison map 的分布如何？
 3. 規格、Git revision 與資料 snapshot 全部鎖定後，既有 889 筆見鼠通報與
-   各 map-as-delivered 的位置重合程度為何？
+   v0.3 composite map-as-delivered 的位置重合程度為何；相較 frozen food-only
+   v0.1 baseline 的差異為何？
 
 第三題只叫一次性 retrospective report-location concordance，不是 validation；
 結果不得回灌特徵、方向、半徑、權重、support、normalization 或版本選擇。
@@ -137,6 +138,20 @@ V03InternalSimulation(c) =
 - Composite 永遠是 `BLOCKED_INTERNAL_SIMULATION`；不是 probability、risk、
   predicted activity、construction、disturbance 或 diffusion。
 
+### 4.1 七個 outcome-free diagnostic variants
+
+SQL 16／17 保留七個 variants，角色只限 lock 前的 QA 與 frontend preview：
+
+- frozen food-only v0.1
+- frozen sewer system-type-only v0.1
+- sewer attribute index v0.2 complete-case
+- 都更行政 site 的 0 m、150 m、300 m cell-footprint windows
+- v0.3 equal-group composite 150 m
+
+Rat Radar 不得用來選擇、調權、重新排序或歸因這七個 variants。正式
+retrospective 只允許 v0.3 composite，並把 food-only v0.1 放在同一結果列作
+baseline；其餘五個 diagnostic variants 不進 concordance lock。
+
 ## 5. BigQuery artifacts
 
 不覆寫 v0.1/v0.2 或 pre-review candidate metrics。新增：
@@ -148,6 +163,10 @@ V03InternalSimulation(c) =
 5. `subterrat_predictions.map_hotspot_cells_v0_3_internal_simulation`
 6. `subterrat_predictions.hotspot_scenarios_v0_3_locked_internal_simulation`
 7. `subterrat_predictions.hotspot_scenario_lock_manifest_v0_3`
+
+未鎖定的 scenario／quality tables 保留七個 outcome-free variants 供 QA 與
+preview。SQL 19 只把 v0.3 composite 與 frozen food-only v0.1 baseline 複製到
+concordance lock；這不授權對三個 component 各自比對 outcome。
 
 SQL 16 在 composite materialization 前 fail-closed 驗證：clean committed Git
 HEAD、`COMMITTED_SOURCE`、GPT Pro review receipt hash、contract hash、SQL hash、
@@ -180,7 +199,11 @@ cells 不畫成零值。這只屬 read-only map preview。
 
 Lock 後才可執行，且永遠保留 889 筆作 citywide denominator。
 
-Primary citywide map-as-delivered：
+Primary citywide map-as-delivered 只評估
+`v0_3_equal_group_internal_simulation_r150` 綜合分數；frozen food-only v0.1
+僅作同一結果列內的必要 baseline。餐飲、地下水道與都更 component 可以在前端
+分成三個解釋圖層，但不得各自產生 Rat Radar concordance，也不得用 outcome
+宣稱任何 component attribution：
 
 - `report_overlap_fraction`
 - `report_overlap_to_area_ratio`
@@ -188,11 +211,12 @@ Primary citywide map-as-delivered：
 - `unscored_report_fraction`
 - exact numerator、denominator、selected-area share、scoreable-area share
 
-Secondary exact common support：把 v0.3 與 frozen food v0.1 都在 v0.3 exact
+Secondary exact common support：把 v0.3 composite 與 frozen food v0.1 都在 v0.3 exact
 scoreable support 重新排名，以該 common support 的 10% eligible area 作同尺度
 比較，並報 common-support denominator 與 outside-support fraction。
 
-結果只能描述 location concordance，禁止 component attribution，也不得據此
+Primary 與 secondary 各只輸出一列 v0.3 composite 結果，food baseline 放在同列
+欄位中。結果只能描述 location concordance，禁止 component attribution，也不得據此
 改版。accuracy、specificity、AUC、probability 與 predictive validation 都不報。
 
 ## 7. React internal lab

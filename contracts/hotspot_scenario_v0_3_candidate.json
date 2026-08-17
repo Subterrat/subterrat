@@ -130,7 +130,7 @@
     "weight_source": "PREREGISTERED_EQUAL_GROUP_ASSUMPTION_NOT_OUTCOME_FITTED",
     "score_semantics": "ORDINAL_INTERNAL_SIMULATION_INDEX_NOT_PROBABILITY"
   },
-  "comparison_variants": [
+  "outcome_free_diagnostic_variants": [
     "food_market_only_v0_1",
     "sewer_system_type_only_v0_1",
     "sewer_attribute_index_v0_2_complete_case",
@@ -138,6 +138,11 @@
     "approved_rebuilding_admin_site_cell_footprint_buffer_150m",
     "approved_rebuilding_admin_site_cell_footprint_buffer_300m",
     "v0_3_equal_group_internal_simulation_r150"
+  ],
+  "outcome_free_diagnostic_variant_policy": "all seven variants are retained for pre-lock QA and frontend preview only; Rat Radar outcomes must not select, tune, rerank, or attribute among them",
+  "comparison_variants": [
+    "v0_3_equal_group_internal_simulation_r150",
+    "food_market_only_v0_1"
   ],
   "rank_support": {
     "rule": "complete_case_only",
@@ -151,8 +156,14 @@
   },
   "concordance_evaluation": {
     "evaluation_kind": "ONE_SHOT_POST_LOCK_RETROSPECTIVE_REPORT_LOCATION_CONCORDANCE",
-    "primary_citywide_comparison": "compare each map as delivered, including its unscored support",
+    "evaluated_model_variant": "v0_3_equal_group_internal_simulation_r150",
+    "baseline_variant": "food_market_only_v0_1",
+    "result_granularity": "one composite result row with food-only baseline columns per evaluation scope",
+    "primary_citywide_comparison": "evaluate only the v0.3 equal-group composite as delivered and place the frozen food-only v0.1 baseline in the same result row",
     "secondary_common_support_comparison": "rerank frozen food v0.1 on the exact v0.3 scoreable support",
+    "diagnostic_variants_evaluated_separately": false,
+    "component_map_outcome_comparison_allowed": false,
+    "component_map_policy": "food, sewer-attribute, and approved-rebuilding component layers may be rendered separately for explanation but must not receive separate Rat Radar concordance results",
     "primary_metrics": [
       "report_overlap_fraction",
       "report_overlap_to_area_ratio",
@@ -168,6 +179,11 @@
   },
   "publication_policy": {
     "serving_table": "subterrat_predictions.map_hotspot_cells_v0_3_internal_simulation",
+    "frontend_component_layers": [
+      "food_market",
+      "sewer_attribute_index",
+      "approved_rebuilding_admin_site_cell_footprint_buffer_150m"
+    ],
     "public_release_allowed_now": false,
     "operational_use_allowed_now": false,
     "required_limitation_codes": [

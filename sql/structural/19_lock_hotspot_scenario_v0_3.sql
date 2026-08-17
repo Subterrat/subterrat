@@ -64,7 +64,37 @@ SELECT
   'LOCKED_AWAITING_ONE_SHOT_RETROSPECTIVE_CONCORDANCE'
     AS retrospective_concordance_state
 FROM
-  `devjam26aug17tpe-1270.subterrat_predictions.hotspot_scenarios_v0_3_internal_simulation`;
+  `devjam26aug17tpe-1270.subterrat_predictions.hotspot_scenarios_v0_3_internal_simulation`
+WHERE variant_id IN (
+  'v0_3_equal_group_internal_simulation_r150',
+  'food_market_only_v0_1'
+);
+
+ASSERT (
+  SELECT
+    COUNT(*) = 3420 * 2
+    AND COUNT(DISTINCT variant_id) = 2
+    AND COUNTIF(
+      variant_id = 'v0_3_equal_group_internal_simulation_r150'
+    ) = 3420
+    AND COUNTIF(variant_id = 'food_market_only_v0_1') = 3420
+    AND COUNT(DISTINCT IF(
+      variant_id = 'v0_3_equal_group_internal_simulation_r150',
+      cell_id,
+      NULL
+    )) = 3420
+    AND COUNT(DISTINCT IF(
+      variant_id = 'food_market_only_v0_1',
+      cell_id,
+      NULL
+    )) = 3420
+    AND COUNTIF(variant_id NOT IN (
+      'v0_3_equal_group_internal_simulation_r150',
+      'food_market_only_v0_1'
+    )) = 0
+  FROM
+    `devjam26aug17tpe-1270.subterrat_predictions.hotspot_scenarios_v0_3_locked_internal_simulation`
+) AS 'v0.3 concordance lock must contain only the composite and food baseline';
 
 CREATE OR REPLACE TABLE
   `devjam26aug17tpe-1270.subterrat_predictions.hotspot_scenario_lock_manifest_v0_3` AS
@@ -82,14 +112,15 @@ SELECT
   @scenario_sql_sha256 AS scenario_sql_sha256,
   @urban_renewal_source_snapshot_id AS urban_renewal_source_snapshot_id,
   [
-    'food_market_only_v0_1',
-    'sewer_system_type_only_v0_1',
-    'sewer_attribute_index_v0_2_complete_case',
-    'approved_rebuilding_admin_site_cell_footprint_buffer_0m',
-    'approved_rebuilding_admin_site_cell_footprint_buffer_150m',
-    'approved_rebuilding_admin_site_cell_footprint_buffer_300m',
-    'v0_3_equal_group_internal_simulation_r150'
+    'v0_3_equal_group_internal_simulation_r150',
+    'food_market_only_v0_1'
   ] AS included_variants,
+  [
+    'food_market',
+    'sewer_attribute_index',
+    'approved_rebuilding_admin_site_cell_footprint_buffer_150m'
+  ] AS frontend_component_layers,
+  'DENY' AS component_outcome_concordance,
   'DENY' AS raw_outcome_access_before_lock,
   'INTERNAL_SIMULATION_ONLY' AS use_state,
   'NO_TRUSTED_RESULT' AS evidence_state,
@@ -101,7 +132,12 @@ ASSERT (
     COUNT(*) = 1
     AND ANY_VALUE(lock_status) =
       'LOCKED_AWAITING_ONE_SHOT_RETROSPECTIVE_CONCORDANCE'
+    AND ARRAY_TO_STRING(ANY_VALUE(included_variants), ',') =
+      'v0_3_equal_group_internal_simulation_r150,food_market_only_v0_1'
+    AND ARRAY_TO_STRING(ANY_VALUE(frontend_component_layers), ',') =
+      'food_market,sewer_attribute_index,approved_rebuilding_admin_site_cell_footprint_buffer_150m'
     AND ANY_VALUE(raw_outcome_access_before_lock) = 'DENY'
+    AND ANY_VALUE(component_outcome_concordance) = 'DENY'
     AND ANY_VALUE(use_state) = 'INTERNAL_SIMULATION_ONLY'
     AND ANY_VALUE(evidence_state) = 'NO_TRUSTED_RESULT'
     AND ANY_VALUE(operational_use) = 'PROHIBITED'

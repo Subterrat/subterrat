@@ -89,6 +89,55 @@ class HotspotScenarioV03ContractTest(unittest.TestCase):
         self.assertEqual(state["evidence_state"], "NO_TRUSTED_RESULT")
         self.assertEqual(state["operational_use"], "PROHIBITED")
 
+    def test_concordance_uses_only_composite_and_food_baseline(self) -> None:
+        diagnostic_variants = self.contract["outcome_free_diagnostic_variants"]
+        self.assertEqual(
+            diagnostic_variants,
+            [
+                "food_market_only_v0_1",
+                "sewer_system_type_only_v0_1",
+                "sewer_attribute_index_v0_2_complete_case",
+                "approved_rebuilding_admin_site_cell_footprint_buffer_0m",
+                "approved_rebuilding_admin_site_cell_footprint_buffer_150m",
+                "approved_rebuilding_admin_site_cell_footprint_buffer_300m",
+                "v0_3_equal_group_internal_simulation_r150",
+            ],
+        )
+        self.assertIn(
+            "pre-lock QA and frontend preview only",
+            self.contract["outcome_free_diagnostic_variant_policy"],
+        )
+        self.assertEqual(
+            self.contract["comparison_variants"],
+            [
+                "v0_3_equal_group_internal_simulation_r150",
+                "food_market_only_v0_1",
+            ],
+        )
+        evaluation = self.contract["concordance_evaluation"]
+        self.assertEqual(
+            evaluation["evaluated_model_variant"],
+            "v0_3_equal_group_internal_simulation_r150",
+        )
+        self.assertEqual(evaluation["baseline_variant"], "food_market_only_v0_1")
+        self.assertEqual(
+            evaluation["result_granularity"],
+            "one composite result row with food-only baseline columns per evaluation scope",
+        )
+        self.assertFalse(evaluation["diagnostic_variants_evaluated_separately"])
+        self.assertFalse(evaluation["component_map_outcome_comparison_allowed"])
+        self.assertFalse(evaluation["selection_from_results_allowed"])
+        self.assertFalse(evaluation["component_attribution_allowed"])
+        self.assertIn("same result row", evaluation["primary_citywide_comparison"])
+        self.assertEqual(
+            self.contract["publication_policy"]["frontend_component_layers"],
+            [
+                "food_market",
+                "sewer_attribute_index",
+                "approved_rebuilding_admin_site_cell_footprint_buffer_150m",
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

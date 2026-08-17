@@ -42,8 +42,9 @@ CREATE SCHEMA IF NOT EXISTS
   `devjam26aug17tpe-1270.subterrat_evaluation`
 OPTIONS(location = 'asia-east1');
 
--- Primary comparison: each map is evaluated as delivered, including each
--- map's own unscored support.
+-- Primary comparison: only the v0.3 equal-group composite is evaluated as
+-- delivered. Frozen food-only v0.1 remains a baseline in the same result row.
+-- Frontend component layers never receive separate outcome comparisons.
 CREATE OR REPLACE TABLE
   `devjam26aug17tpe-1270.subterrat_evaluation.rat_radar_report_location_concordance_v0_3` AS
 WITH
@@ -59,6 +60,10 @@ locked AS (
   WHERE
     retrospective_concordance_state =
       'LOCKED_AWAITING_ONE_SHOT_RETROSPECTIVE_CONCORDANCE'
+    AND variant_id IN (
+      'v0_3_equal_group_internal_simulation_r150',
+      'food_market_only_v0_1'
+    )
 ),
 variant_area AS (
   SELECT
@@ -120,13 +125,20 @@ metrics AS (
   CROSS JOIN grid_coverage
 ),
 food AS (
-  SELECT report_overlap_fraction AS food_report_overlap_fraction
+  SELECT
+    overlapping_report_count AS food_overlapping_report_count,
+    unscored_report_count AS food_unscored_report_count,
+    selected_area_share AS food_selected_area_share,
+    scoreable_area_share AS food_scoreable_area_share,
+    report_overlap_fraction AS food_report_overlap_fraction,
+    unscored_report_fraction AS food_unscored_report_fraction,
+    report_overlap_to_area_ratio AS food_report_overlap_to_area_ratio
   FROM metrics
   WHERE variant_id = 'food_market_only_v0_1'
 )
 SELECT
   metrics.*,
-  food.food_report_overlap_fraction,
+  food.*,
   metrics.report_overlap_fraction - food.food_report_overlap_fraction
     AS difference_in_report_overlap_vs_food_v0_1,
   'PRIMARY_CITYWIDE_MAP_AS_DELIVERED' AS comparison_scope,
@@ -140,11 +152,13 @@ SELECT
   'ORDINAL_SIMULATION_INDEX_NOT_PROBABILITY' AS score_semantics,
   'NO_TRUSTED_RESULT' AS evidence_state
 FROM metrics
-CROSS JOIN food;
+CROSS JOIN food
+WHERE metrics.variant_id = 'v0_3_equal_group_internal_simulation_r150';
 
 ASSERT (
   SELECT
-    COUNT(*) = 7
+    COUNT(*) = 1
+    AND COUNTIF(variant_id != 'v0_3_equal_group_internal_simulation_r150') = 0
     AND COUNTIF(report_denominator != {denominator}) = 0
     AND COUNTIF(
       outcome_role
@@ -279,15 +293,22 @@ fractions AS (
   FROM metrics
 ),
 food AS (
-  SELECT report_overlap_fraction_on_common_support AS food_report_overlap_fraction
+  SELECT
+    overlapping_report_count AS food_overlapping_report_count,
+    selected_area_fraction_of_common_support
+      AS food_selected_area_fraction_of_common_support,
+    report_overlap_fraction_on_common_support
+      AS food_report_overlap_fraction_on_common_support,
+    report_overlap_to_area_ratio_on_common_support
+      AS food_report_overlap_to_area_ratio_on_common_support
   FROM fractions
   WHERE variant_id = 'food_market_only_v0_1_reranked_on_v0_3_support'
 )
 SELECT
   fractions.*,
-  food.food_report_overlap_fraction,
+  food.*,
   fractions.report_overlap_fraction_on_common_support
-    - food.food_report_overlap_fraction
+    - food.food_report_overlap_fraction_on_common_support
     AS difference_in_report_overlap_vs_food_v0_1,
   'SECONDARY_EXACT_V0_3_COMMON_SUPPORT' AS comparison_scope,
   'ONE_SHOT_POST_LOCK_RETROSPECTIVE_REPORT_LOCATION_CONCORDANCE'
@@ -300,11 +321,13 @@ SELECT
   'ORDINAL_SIMULATION_INDEX_NOT_PROBABILITY' AS score_semantics,
   'NO_TRUSTED_RESULT' AS evidence_state
 FROM fractions
-CROSS JOIN food;
+CROSS JOIN food
+WHERE fractions.variant_id = 'v0_3_equal_group_internal_simulation_r150';
 
 ASSERT (
   SELECT
-    COUNT(*) = 2
+    COUNT(*) = 1
+    AND COUNTIF(variant_id != 'v0_3_equal_group_internal_simulation_r150') = 0
     AND COUNTIF(citywide_report_denominator != {denominator}) = 0
     AND COUNT(DISTINCT common_support_report_count) = 1
     AND COUNTIF(
