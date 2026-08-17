@@ -76,3 +76,56 @@ devjam26aug17tpe-1270.subterrat_predictions.map_hotspot_cells_t0
 ## 驗證邊界
 
 `scripts/render_rat_radar_retrospective_sql.py` 只可在 T0 freeze 後使用。它會從本機 CSV 產生 validation-only SQL，不會把說明、照片、地址或原始座標寫入 BigQuery。既有通報結果一律標記為 `DEVELOPMENT_EXPOSED_RETROSPECTIVE`，不能宣稱為未來泛化或現場 Ground Truth。
+
+## FastAPI service（`services/hotspot_api/`）
+
+實作 [GitHub issue #4](https://github.com/Subterrat/subterrat/issues/4)：部署在 Cloud Run 的唯讀 FastAPI，直接查詢已 materialize 的
+`devjam26aug17tpe-1270.subterrat_predictions.map_hotspot_cells_t0`（見上面「建立臺北 S2 Level 15 網格」段落），讓 Flutter／Google Maps
+不需要 BigQuery credential 就能讀熱點網格。這一版只服務既有 deterministic hotspot ranking，不在 request time 重算模型。
+
+Public read-only endpoints（`services.hotspot_api.public_app:app`）：
+
+```text
+GET /healthz
+GET /readyz
+GET /api/v1/model-capabilities
+GET /api/v1/map/bootstrap
+GET /api/v1/releases/current
+GET /api/v1/releases/{release_id}/cells?bbox=west,south,east,north&limit=500
+GET /api/v1/releases/{release_id}/cells/{cell_id}
+```
+
+Issue #4 只要求唯讀 API；`docs/API_CONTRACT.md` 第 6 節描述的 internal `/internal/v1/prediction-runs` command API 不在這個 service 的範圍內。
+
+`map_hotspot_cells_t0` 目前只有兩組（food／sewer）ranked layer，沒有三組合併的 `structural_score`／`rank_percentile`／`top_k`，也沒有 `target_window`（這是 development-exposed retrospective freeze，不是 official_t0 run）。回應裡這些欄位固定回傳 `null`，不得虛構；`raw_layer_fields` 則原樣帶出 `food_score`、`sewer_score`、`sewer_coverage_state`、`unused_public_building_address_point_count`、`freeze_id`、`model_kind`、`score_semantics`、`evidence_state` 等 issue #4 要求的欄位。
+
+### Runtime 設定
+
+```text
+GOOGLE_CLOUD_PROJECT=devjam26aug17tpe-1270
+BQ_LOCATION=asia-east1
+BQ_DATASET=subterrat_predictions
+BQ_TABLE=map_hotspot_cells_t0
+RELEASE_ID=t0-layerwise-development-20260817-v2
+MAX_FEATURES_PER_REQUEST=1500
+```
+
+`RELEASE_ID` 決定 `/readyz`、`/releases/current`、`/releases/{release_id}/cells*` 服務哪一個 `freeze_id`；換 freeze 時只需要改這個環境變數，不必改程式碼。
+
+### 安裝與本機執行
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/pip install -r requirements-dev.txt   # 測試用，額外含 httpx
+PYTHONPATH=. .venv/bin/python -m unittest discover -s tests -v
+```
+
+```bash
+PYTHONPATH=. .venv/bin/uvicorn services.hotspot_api.public_app:app --reload --port 8080
+```
+
+`/healthz` 與 `/api/v1/model-capabilities` 不需要 GCP 憑證。`/readyz`、`/releases/current`、`/releases/{release_id}/cells*` 會實際查詢
+`map_hotspot_cells_t0`，本機測試前先 `gcloud auth application-default login`；Cloud Run 上則由 issue #4 描述的專用 runtime service
+account（`subterrat-hotspot-api@devjam26aug17tpe-1270.iam.gserviceaccount.com`，只有 `subterrat_predictions` dataset 的
+`bigquery.dataViewer`）提供權限。Dockerfile／Cloud Run 部署設定與 Flutter 一起處理，不在本次變更範圍內。
