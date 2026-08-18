@@ -19,7 +19,7 @@
 `test/` 與 `tests/` 是兩個獨立資料夾，分屬不同工具鏈，不要合併：
 
 - `test/`：Flutter／Dart，`flutter test` 預設只認這個名稱。
-- `tests/`：Python／pytest，`pyproject.toml` 的 `[tool.pytest.ini_options]` 已固定 `testpaths = ["tests"]`。
+- `tests/`：Python tests；repository-owned 驗證命令是 `PYTHONPATH=. uv run python -m unittest discover -s tests -v`。若開發環境另有 pytest，`pyproject.toml` 的 `[tool.pytest.ini_options]` 會把 discovery 固定在 `tests/`，但 pytest 目前不在 `uv.lock` 的 dev dependencies 內。
 
 新增測試一律照語言放進對應資料夾，不要互相搬移。
 

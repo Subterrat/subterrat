@@ -10,10 +10,16 @@ v0.1 freeze、不建立五項 composite，也不產生鼠患機率。既有 889 
 
 - Google Cloud project：`devjam26aug17tpe-1270`
 - BigQuery location：`asia-east1`
-- Python 3.11+，並已安裝 `requirements-dev.txt`
+- [`uv`](https://docs.astral.sh/uv/)；Python 與依賴由 `pyproject.toml`／`uv.lock` 管理
 - v0.1 的 `analysis_cells`、`cell_features_t0_candidate` 與
   `sewer_access_point_candidate_geo` 已存在
 - 執行者具有目標 datasets 的 BigQuery Job User／Data Editor 權限
+
+先同步 repository 鎖定的開發依賴：
+
+```bash
+uv sync --group dev
+```
 
 ## 1. 取得兩個官方 XML shard
 
@@ -32,7 +38,7 @@ curl -fL \
 ## 2. 匯出 BigQuery NDJSON
 
 ```bash
-PYTHONPATH=. .venv/bin/python scripts/export_taipei_sanitary_pipe_bq.py \
+PYTHONPATH=. uv run python scripts/export_taipei_sanitary_pipe_bq.py \
   artifacts/sewer-v0.2/source/A8040101_11502_1.xml \
   artifacts/sewer-v0.2/source/A8040101_11502_2.xml \
   --resource-id 7d82d9c9-8d89-4058-b845-f86698aee70f \
@@ -67,7 +73,7 @@ staging 可以覆寫；canonical raw table 只透過下一步的 immutable MERGE
 
 ```bash
 PIPE_SNAPSHOT_ID="$(
-  .venv/bin/python -c \
+  uv run python -c \
     'import json; print(json.load(open("artifacts/sewer-v0.2/sanitary_pipe_v0_2.manifest.json"))["source_snapshot_id"])'
 )"
 

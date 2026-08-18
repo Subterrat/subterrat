@@ -6,14 +6,34 @@
 
 - Contract version：`0.1.0`
 - OpenAPI projection：`docs/openapi-v1.yaml`
-- Implementation status：`SPECIFICATION_ONLY`
+- Implementation status：`IMPLEMENTED_UNVALIDATED`（僅 public read MVP subset）
+- Contract coverage：`MIXED_IMPLEMENTED_AND_DEFERRED`
 - Runtime evidence：`NO_TRUSTED_RESULT`
 
-本文件描述預定的 FastAPI transport contract，不代表 endpoint、模型、資料管線或 GCP deployment 已存在。語意衝突時依序以 `docs/BELIEF.md`、`docs/HARNESS_ARCHITECTURE.md`、本文件、OpenAPI projection 為準。
+本文件同時描述目前已實作的 public read MVP subset，以及尚未實作的 target contract。OpenAPI projection 不是目前 FastAPI runtime schema 的逐路由鏡像；不能因 endpoint 出現在本文件或 OpenAPI 就宣稱已實作、已部署或已有 human-approved release。語意衝突時依序以 `docs/BELIEF.md`、`docs/HARNESS_ARCHITECTURE.md`、本文件、OpenAPI projection 為準。
 
-## 2. 已確認的模型輸出
+目前 repository implementation：
 
-v0.1 模型是 T0 deterministic spatial ranking，不是 fitted daily time-series model：
+| 狀態 | Endpoints |
+| --- | --- |
+| `IMPLEMENTED_UNVALIDATED` | `/healthz`、`/readyz`、`/api/v1/model-capabilities`、`/api/v1/map/bootstrap`、`/api/v1/releases/current`、`/api/v1/releases/{release_id}/cells`、`/api/v1/releases/{release_id}/cells/{cell_id}` |
+| `DEFERRED_NOT_IMPLEMENTED` | `/api/v1/releases/{release_id}` metadata、forecast history、release stats、全部 `/internal/v1/prediction-runs*` command API |
+
+已實作只代表 repository 內有 FastAPI route 與 local tests；GCP BigQuery readability、Cloud Run deployment、公開 IAM/CORS、production journey、模型有效性與 human-approved publication 都需要各自的直接證據。
+
+## 2. 當前 payload 與 deferred official output
+
+目前 repository contract 是 T0 deterministic layer-wise spatial ranking，不是 fitted daily time-series model。現有 `map_hotspot_cells_t0` 只有 `food_market_only` 與 `sewer_system_type_only` layer，加上未利用建物 aggregate overlay；沒有三組完整 main score，也沒有 official prospective target window。
+
+因此目前 FastAPI cells response 必須維持：
+
+- `structural_score=null`
+- `rank_percentile=null`
+- `top_k=null`
+- `target_window=null`
+- `components.food`／`components.sewer` 依 serving row 回傳，`components.abandoned=null`
+
+下列公式是三組來源都通過 data gate 後的 deferred full-score target，不是目前 serving table 已 materialize 的輸出：
 
 ```text
 Food(cell)      = mean(rank_percentile(food features))
@@ -24,7 +44,7 @@ MainScore(cell) = (Food(cell) + Sewer(cell) + Abandoned(cell)) / 3
 Baseline(cell)  = Food(cell)
 ```
 
-每次 prediction run 對每個 S2 Level 15 cell 產生：
+未來每次 official prediction run 預計對每個 S2 Level 15 cell 產生：
 
 | 類型 | 欄位 | 語意 |
 | --- | --- | --- |
@@ -45,7 +65,7 @@ Baseline(cell)  = Food(cell)
 
 ## 3. Capability matrix
 
-| Capability | v0.1 contract | 備註 |
+| Capability | API 回傳狀態 | 備註 |
 | --- | --- | --- |
 | Spatial ranking | `PLANNED` | 每個 frozen run／cell 一筆 |
 | Forecast window | `PLANNED` | 必填 `as_of`、`target_window.start/end` |
@@ -54,11 +74,13 @@ Baseline(cell)  = Food(cell)
 | Three fixed ablations | `PLANNED` | Without Food／Sewer／Abandoned |
 | Aggregated released outcome | `CONDITIONAL` | T1 關窗、finalization、人工核准後才可公開 |
 | Daily model forecast | `NOT_SUPPORTED` | 現有特徵與規則沒有日尺度 dynamics |
-| Scenario simulation | `NOT_SUPPORTED` | 尚無 scenario model；不得製造模擬曲線 |
+| Scenario simulation | `NOT_SUPPORTED` | 尚無已定義、可重算及可驗證的正式 scenario model；前端 UI prototype 不構成此能力 |
 | Calibrated probability | `NOT_SUPPORTED` | 缺臺北 E2／E3 正負標籤與 calibration |
 | Live per-coordinate inference | `NOT_SUPPORTED` | 只讀 frozen S2 serving layer |
 
 `GET /api/v1/model-capabilities` 必須把上述狀態回傳給 Flutter；未實作能力不得由 UI 自行推測。
+
+此表描述的是 official v0.1 research capability，不是 route 是否存在。現有 cells transport 可讀 development-exposed layer payload，但 official spatial ranking capability 仍可保持 `PLANNED`；兩者不得合併成「模型已驗證」。
 
 ## 4. 時間資料契約
 
@@ -76,38 +98,38 @@ Baseline(cell)  = Food(cell)
 - `target_window.end`：未來觀測窗終點。
 - `t0_cutoff`：freeze protocol 鎖定的 T0 cutoff。
 
-目前不得把一筆 window score 展開成每日重複值。若未來有可信 time-varying features 與 transition rule，需另立 API major/minor revision、Model card、scenario schema 與 validation plan，才能開 simulation series。
+目前不得把一筆 window score 展開成每日重複值。`lib/sim.dart` 的未校準 UI prototype 不是 prediction output，也不得併入此 API。若未來有可信 time-varying features 與 transition rule，需另立 API major/minor revision、Model card、scenario schema 與 validation plan，才能開 simulation series。
 
 ## 5. Public read API
 
-所有 public endpoint 只能讀取經人工核准的 sanitized release；public service identity 不得讀 `t1_vault`、raw reports 或精確地下設施。
+Target policy 要求所有 public endpoint 只能讀取經人工核准的 sanitized release，且 public service identity 不得讀 `t1_vault`、raw reports 或精確地下設施。現有 MVP 只以 configured `RELEASE_ID` 加 serving-table readability 判斷可讀，尚未實作 human-approved release manifest；因此只能列為 `IMPLEMENTED_UNVALIDATED`，不能視為可公開的 production service。
 
-| Method | Path | 用途 |
-| --- | --- | --- |
-| `GET` | `/api/v1/model-capabilities` | 回傳模型實際支援與不支援的輸出能力 |
-| `GET` | `/api/v1/map/bootstrap` | Flutter 啟動資料：目前 release、臺北 bounds、layers、legend、claim boundary |
-| `GET` | `/api/v1/releases/current` | 指向目前獲准公開的 immutable release |
-| `GET` | `/api/v1/releases/{release_id}` | 版本、freeze、target window、digest、來源日期與限制 |
-| `GET` | `/api/v1/releases/{release_id}/cells` | 依 `bbox` 取得 GeoJSON S2 cells；一次最多 1,500 features |
-| `GET` | `/api/v1/releases/{release_id}/cells/{cell_id}` | Flutter 點擊 cell 時取得詳細 component、coverage 與限制 |
-| `GET` | `/api/v1/cells/{cell_id}/forecast-history` | 取得同一 cell 的 prediction vintages；不是 daily forecast |
-| `GET` | `/api/v1/releases/{release_id}/stats` | 已公開的行政區／全市聚合摘要 |
-| `GET` | `/healthz` | 程序存活；不證明資料或模型有效 |
-| `GET` | `/readyz` | 可讀目前 public release；不證明預測有效 |
+| Method | Path | Runtime status | 用途 |
+| --- | --- | --- | --- |
+| `GET` | `/api/v1/model-capabilities` | `IMPLEMENTED_UNVALIDATED` | 回傳模型實際支援與不支援的輸出能力 |
+| `GET` | `/api/v1/map/bootstrap` | `IMPLEMENTED_UNVALIDATED` | Flutter 啟動資料：目前 configured release、臺北 bounds、layers 與 claim boundary |
+| `GET` | `/api/v1/releases/current` | `IMPLEMENTED_UNVALIDATED` | 指向目前 configured、且 serving table 可讀的 release ID；尚非 release-manifest publication proof |
+| `GET` | `/api/v1/releases/{release_id}` | `DEFERRED_NOT_IMPLEMENTED` | 版本、freeze、target window、digest、來源日期與限制 |
+| `GET` | `/api/v1/releases/{release_id}/cells` | `IMPLEMENTED_UNVALIDATED` | 依 `bbox` 取得 GeoJSON S2 cells；一次最多 1,500 features |
+| `GET` | `/api/v1/releases/{release_id}/cells/{cell_id}` | `IMPLEMENTED_UNVALIDATED` | 取得單一 cell 的 component、coverage 與限制 |
+| `GET` | `/api/v1/cells/{cell_id}/forecast-history` | `DEFERRED_NOT_IMPLEMENTED` | 取得同一 cell 的 prediction vintages；不是 daily forecast |
+| `GET` | `/api/v1/releases/{release_id}/stats` | `DEFERRED_NOT_IMPLEMENTED` | 已公開的行政區／全市聚合摘要 |
+| `GET` | `/healthz` | `IMPLEMENTED_UNVALIDATED` | 程序存活；不證明資料或模型有效 |
+| `GET` | `/readyz` | `IMPLEMENTED_UNVALIDATED` | configured release ID 在 serving table 可讀；不證明 human approval 或預測有效 |
 
 ### 5.1 Cell query
 
 ```http
 GET /api/v1/releases/{release_id}/cells
     ?bbox=121.48,25.01,121.58,25.10
-    &layers=structural_score,data_coverage
     &limit=1500
 ```
 
 - `bbox` 必填，格式固定為 `west,south,east,north`，座標系統為 WGS84。
+- `layers` 是 deferred target query；目前 FastAPI route 未實作 layer filtering。
 - GeoJSON coordinate order 固定為 longitude、latitude。
 - `cell_id` 一律是 string，避免 S2 64-bit ID 精度損失。
-- Response 必須帶 `release_id`、`prediction_run_id`、`target_window` 與 `next_page_token`。
+- Response 帶 `release_id`、`prediction_run_id`、`target_window` 與 `next_page_token`；目前 development-exposed freeze 的 `target_window` 必須為 `null`，不得虛構 official observation window。
 - `approved_report_count` layer 只有在 T1 已公開且通過 suppression policy 時可用。
 
 ### 5.2 Forecast history
@@ -120,7 +142,7 @@ Response 的 `series_kind` 固定為 `forecast_vintages`，`daily_time_series=fa
 
 ## 6. Internal command API
 
-Internal endpoint 必須使用 Cloud Run IAM／OIDC，且與 public service 分離。
+Internal endpoint 尚未實作。未來若實作，必須使用 Cloud Run IAM／OIDC，且與 public service 分離。
 
 | Method | Path | 用途 |
 | --- | --- | --- |
@@ -163,7 +185,7 @@ POST /dispatch
 POST /bait-recommendations
 ```
 
-Simulation endpoint 延後的原因不是 FastAPI 做不到，而是目前沒有被定義、可重算及可驗證的動態 scenario model。
+Simulation endpoint 延後的原因不是 FastAPI 做不到，而是目前沒有被定義、可重算及可驗證的正式動態 scenario model；前端 prototype 不得被當成已存在的 API／model capability。
 
 ## 8. Storage mapping
 
@@ -175,6 +197,8 @@ Simulation endpoint 延後的原因不是 FastAPI 做不到，而是目前沒有
 | Forecast history | `cell_window_scores` across published runs | 不補每日值 |
 | Outcome status history | `t1_vault.report_status_events` | restricted；public API 無權讀 |
 | Released outcome aggregate | human-approved sanitized serving table | 小樣本依 disclosure policy suppression |
+
+本節是 target storage mapping。現有 MVP adapter 直接讀 `devjam26aug17tpe-1270.subterrat_predictions.map_hotspot_cells_t0`，以 configured `RELEASE_ID` 對應 `freeze_id`；它尚未實作本節的 prediction run、release manifest、history 或 outcome publication tables。
 
 現有 `predictions.cell_scores_t0` 可作第一個實作名稱；一旦支援多個 target windows，canonical grain 應升級為 `cell_window_scores`，不得只以 `v1` 或覆寫舊列表示版本。
 
@@ -210,3 +234,5 @@ FORBIDDEN_DATA_SCOPE
 - GCP smoke tests 才能證明指定 Cloud Run／BigQuery environment behavior。
 - Prospective evaluation 與 human review 才能支持指定 T1 window 的 report-hotspot 結果。
 - 在 repository-owned Sensors 與相應 receipts 建立前，一律維持 `NO_TRUSTED_RESULT`。
+
+Repository 內已有 public read MVP 的 local endpoint tests；即使全數通過，證據層級仍只到被測 checkout 的 local runtime，不可升格為 Cloud Run、production、prospective validation 或 human approval。

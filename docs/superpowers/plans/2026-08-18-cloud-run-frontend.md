@@ -1,10 +1,14 @@
 # Cloud Run Frontend Implementation Plan
 
+> Status on `origin/main` at 2026-08-18: repository implementation artifacts are present (`deploy/frontend.Dockerfile`, Cloud Build configs, Nginx template and helper scripts). The repository does not contain a provider receipt proving that Cloud Build succeeded, Cloud Run is currently deployed, or a production URL passed smoke tests. The existing build keeps `API_BASE` empty, so the resulting frontend is synthetic-demo mode.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build the current Flutter Web application as a reproducible container and deploy it as a browser-accessible Cloud Run service.
 
 **Architecture:** A multi-stage Docker build compiles Flutter Web, then an Nginx runtime serves the generated static assets and provides SPA fallback routing. This first deployment keeps `API_BASE` empty, so the existing frontend uses its built-in demonstration data without changing the private backend API IAM policy.
+
+This file is a historical execution plan, not current deployment proof. Current usage and evidence boundaries are documented in `docs/FRONTEND.md`.
 
 **Tech Stack:** Flutter Web, Docker, Nginx, Google Cloud Build, Google Cloud Run
 
