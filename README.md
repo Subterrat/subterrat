@@ -186,10 +186,3 @@ PYTHONPATH=. uv run python -m unittest discover -s tests -v
 - 把單一民眾通報當成 Ground Truth
 - 為了展示技術而拆分沒有獨立責任的多個 Agent
 
----
-
-## 注意事項
-
-`front-end README.md` 這個檔名含有空格，多數工具不會把它當成 README 顯示。若要讓它成為前端的說明文件，建議改名為 `docs/FRONTEND.md` 或移進前端目錄。
-
-`臺北市都市更新地圖_都更資料.csv` 目前放在 repository 根目錄，建議移進 `data/` 或改為腳本下載，避免原始資料與程式碼混在一起。
