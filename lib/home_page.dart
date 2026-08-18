@@ -203,9 +203,6 @@ class _HomePageState extends State<HomePage> {
 
   int get _hits => _observed.where((o) => o.insideTopK == true).length;
 
-  double get _captureAtK =>
-      _observed.isEmpty ? 0 : _hits / _observed.length;
-
   /// 結構性分數最高的前三格，用來畫圓形不確定範圍。
   ///
   /// 用結構性分數而不是當下熱度，是為了讓圈選範圍在播放時間軸時
@@ -521,11 +518,6 @@ class _HomePageState extends State<HomePage> {
         bottom: 44,
         child: _VerifyPanel(
           mode: _obsMode,
-          hits: _hits,
-          total: _observed.length,
-          capture: _captureAtK,
-          topKPercent: (kTopFraction * 100).round(),
-          isMock: widget.api.isMock,
           onMode: (m) => setState(() => _obsMode = m),
         ),
       ),
@@ -929,24 +921,14 @@ class _Legend extends StatelessWidget {
   }
 }
 
-/// 通報點位圖層開關，以及圈選命中率。
+/// 通報點位圖層開關。
 class _VerifyPanel extends StatelessWidget {
   const _VerifyPanel({
     required this.mode,
-    required this.hits,
-    required this.total,
-    required this.capture,
-    required this.topKPercent,
-    required this.isMock,
     required this.onMode,
   });
 
   final ObservedDisplay mode;
-  final int hits;
-  final int total;
-  final double capture;
-  final int topKPercent;
-  final bool isMock;
   final ValueChanged<ObservedDisplay> onMode;
 
   @override
@@ -992,50 +974,10 @@ class _VerifyPanel extends StatelessWidget {
                 style: const TextStyle(
                     fontSize: 10.5, color: Palette.inkFaint, height: 1.35)),
           ),
-          if (total > 0 && mode == ObservedDisplay.points) ...[
-            const Divider(height: 11),
-            Text('前 $topKPercent% 圈選命中',
-                style: const TextStyle(fontSize: 10.5, color: Palette.inkFaint)),
-            Row(crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic, children: [
-              Text('${(capture * 100).round()}%',
-                  style: const TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
-                      color: Palette.ink)),
-              const SizedBox(width: 6),
-              Text('$hits / $total 筆',
-                  style: const TextStyle(
-                      fontSize: 11, color: Palette.inkSoft)),
-            ]),
-            Row(children: [
-              _dot(const Color(0xFF1B8A3A)),
-              const Text(' 命中　',
-                  style: TextStyle(fontSize: 10.5, color: Palette.inkFaint)),
-              _dot(const Color(0xFFD4416B)),
-              const Text(' 未命中',
-                  style: TextStyle(fontSize: 10.5, color: Palette.inkFaint)),
-            ]),
-            if (isMock)
-              const Padding(
-                padding: EdgeInsets.only(top: 4),
-                child: SizedBox(
-                  width: 168,
-                  child: Text('示範資料，這個數字沒有意義。接上見鼠雷達後才算數。',
-                      style: TextStyle(
-                          fontSize: 10, color: Palette.danger, height: 1.35)),
-                ),
-              ),
-          ],
         ],
       ),
     );
   }
-
-  Widget _dot(Color c) => Container(
-      width: 8,
-      height: 8,
-      decoration: BoxDecoration(color: c, shape: BoxShape.circle));
 }
 
 class _Chip extends StatelessWidget {
