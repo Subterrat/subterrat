@@ -155,7 +155,6 @@ PYTHONPATH=. uv run python -m unittest discover -s tests -v
 
 `model-capabilities` 存在的理由：**未實作的能力不得由前端自行推測**。前端要先問後端支援什麼，再決定顯示什麼。
 
-尚未實作、但契約已定義的有 `GET /api/v1/releases/{release_id}`（回傳 freeze 與 target window）、`forecast-history`、`stats`。
 
 ---
 
