@@ -1,0 +1,12 @@
+.gcloudignore
+.git
+.venv
+.pytest_cache
+artifacts
+**/__pycache__
+**/*.py[cod]
+node_modules
+dist
+coverage
+.DS_Store
+臺北市都市更新地圖_都更資料.csv

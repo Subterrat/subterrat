@@ -5,7 +5,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from services.hotspot_api.config import get_settings
 from services.hotspot_api.errors import register_exception_handlers
-from services.hotspot_api.routers import capabilities, cells, map as map_router, operations, releases
+from services.hotspot_api.routers import (
+    capabilities,
+    cells,
+    lab_v03,
+    map as map_router,
+    network_redistribution,
+    operations,
+    releases,
+)
 
 
 def create_app() -> FastAPI:
@@ -24,6 +32,8 @@ def create_app() -> FastAPI:
     app.include_router(map_router.router)
     app.include_router(releases.router)
     app.include_router(cells.router)
+    app.include_router(lab_v03.router)
+    app.include_router(network_redistribution.router)
     return app
 
 
