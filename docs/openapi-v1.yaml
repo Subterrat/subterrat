@@ -3,10 +3,13 @@ info:
   title: SubTerrat API
   version: 0.1.0
   description: >-
-    Contract-first API for frozen Taipei citizen-reported rat-hotspot spatial
-    rankings. This specification does not assert that an implementation or a
-    validated prediction model exists.
-  x-implementation-status: SPECIFICATION_ONLY
+    Target contract for frozen Taipei citizen-reported rat-hotspot spatial
+    rankings. The repository implements an unvalidated public-read MVP subset;
+    this document also contains deferred routes and is not the exact generated
+    schema of the current FastAPI runtime. No validated prediction or
+    production deployment is asserted.
+  x-implementation-status: IMPLEMENTED_UNVALIDATED
+  x-contract-coverage: MIXED_IMPLEMENTED_AND_DEFERRED
   x-evidence-status: NO_TRUSTED_RESULT
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 servers:
@@ -17,6 +20,21 @@ x-deferred-capabilities:
   scenario_simulation: false
   calibrated_probability: false
   live_coordinate_inference: false
+x-runtime-coverage:
+  implemented_unvalidated:
+    - "GET /healthz"
+    - "GET /readyz"
+    - "GET /api/v1/model-capabilities"
+    - "GET /api/v1/map/bootstrap"
+    - "GET /api/v1/releases/current"
+    - "GET /api/v1/releases/{release_id}/cells"
+    - "GET /api/v1/releases/{release_id}/cells/{cell_id}"
+  deferred_not_implemented:
+    - "GET /api/v1/releases/{release_id}"
+    - "GET /api/v1/cells/{cell_id}/forecast-history"
+    - "GET /api/v1/releases/{release_id}/stats"
+    - "POST /internal/v1/prediction-runs"
+    - "GET /internal/v1/prediction-runs/{prediction_run_id}"
 x-semantic-invariants:
   - as_of must be less than or equal to issued_at
   - official_t0 target_window.start must be greater than as_of
@@ -48,7 +66,11 @@ paths:
     get:
       tags: [Map]
       operationId: getMapBootstrap
-      summary: Load Flutter map configuration and layer availability
+      summary: Load map configuration and layer availability for the configured release
+      description: >-
+        The current MVP resolves a configured freeze ID after a serving-table
+        readability check. A human-approved release manifest remains deferred,
+        so a successful response is not publication proof.
       security: []
       responses:
         "200":
@@ -67,11 +89,15 @@ paths:
     get:
       tags: [Releases]
       operationId: getCurrentRelease
-      summary: Resolve the current human-approved public release
+      summary: Resolve the current configured readable release
+      description: >-
+        The current MVP returns the configured release ID after a serving-table
+        readability check. The target human-approved release-manifest workflow
+        is not implemented yet.
       security: []
       responses:
         "200":
-          description: Current immutable release pointer
+          description: Current readable release pointer; not human-approval proof
           content:
             application/json:
               schema:
@@ -271,11 +297,11 @@ paths:
     get:
       tags: [Operations]
       operationId: getReadiness
-      summary: Report whether the current public release can be served
+      summary: Report whether the configured release can be read
       security: []
       responses:
         "200":
-          description: Public serving dependency is ready
+          description: Configured serving-table dependency is readable
           content:
             application/json:
               schema:
@@ -432,7 +458,7 @@ components:
         implementation_status:
           type: string
           enum: [SPECIFICATION_ONLY, IMPLEMENTED_UNVALIDATED, RUNTIME_VALIDATED]
-          default: SPECIFICATION_ONLY
+          default: IMPLEMENTED_UNVALIDATED
         evidence_status:
           type: string
           const: NO_TRUSTED_RESULT
